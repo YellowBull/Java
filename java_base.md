@@ -373,7 +373,8 @@ Error一般是系统级别的错误，这种错误是我们无法解决的，而
 对于某些函数，对于泛型参数有一些约束，如 <br/>
 public static<T extends Comparable<? super T> > T min(T[] data) <br/>
 表示T必须实现Comparable<K>接口，且K是T的父类。也就是父类K implements Comparable<K>，然后T extends K，从而T extends Comparable<K> <br/>
-而且对于有关系的子类subclass和父类superclass，ArrayList<subclass>和ArrayList<superclass>没有任何关系，不能赋值。但是List<subclass>= ArrayList<subclass>是成立的。 <br/>
+而且对于有关系的子类subclass和父类superclass，ArrayList<subclass>和ArrayList<superclass>没有任何关系，不能赋值。
+但是List<subclass>= ArrayList<subclass>是成立的。 <br/>
 ## 集合框架
 集合主要有两大派系：Collection和Map。其中Collection包含List、Queue、Set。List包含ArrayList和LinkedList，有序集合。
 Queue包含PriorityQueue，有序集合。Set包含HashSet和TreeSet，无序集合。Collection实现了Iterable接口。
@@ -395,19 +396,368 @@ Collections.binarySearch(list, key, comparrator)：二分查找元素<br/>
 Collections.copy(list to, list from) : 复制列表<br/>
 Collections.min(colleciton, comparator)<br/>
 Collections.max(colleciton, comparator)<br/>
-除此之外，还有早期的位于上述架构之外的集合，如Vector，HashTable，Properties，Stack等集合。Vector和HashTable都进行了同步。如果是单线程，用ArrayList等会更高效。<br/>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+除此之外，还有早期的位于上述架构之外的集合，如Vector，HashTable，Properties，Stack等集合。Vector和HashTable都进行了同步。
+如果是单线程，用ArrayList等会更高效。<br/>
+```java
+package knowledge;  
+import java.util.*;  
+public class CollectionDemo {  
+    public static void main(String[] args){  
+        /* 
+            所有集合初始化 
+         */  
+        ArrayList<Person> arrayList = new ArrayList<Person>();  
+        LinkedList<Person> linkedList = new LinkedList<Person>();  
+        PriorityQueue<Person> pq = new PriorityQueue();  
+        HashMap<Person, Integer> hashMap = new HashMap<Person, Integer>();  
+        TreeMap<Person, Integer> treeMap = new TreeMap<Person, Integer>();  
+        HashSet<Person> hashSet = new HashSet<Person>();  
+        TreeSet<Person> treeSet = new TreeSet<Person>();  
+  
+        /* 
+            测试数据 
+         */  
+        Person[] persons = {  
+                new Person("B13080128", "gzx", 23, "2013"),  
+                new Person("B13080127", "qqy", 23, "2013"),  
+                new Person("B13080129", "lcq", 24, "2013"),  
+                new Person("B13080126", "gjj", 23, "2013"),  
+                new Person("B13080130", "xt", 23, "2013")  
+        };  
+        int[] scores = {88, 76, 99, 92, 70};  
+  
+        for(int i = 0; i < persons.length; i++){  
+            arrayList.add(persons[i]);  
+            linkedList.add(persons[i]);  
+  
+            // 添加到队尾，满时返回false  
+            boolean flag = pq.offer(persons[i]);  
+            if(!flag){  
+                System.out.println("full");  
+            }  
+  
+            hashMap.put(persons[i], scores[i]);  
+            treeMap.put(persons[i], scores[i]);  
+            hashSet.add(persons[i]);  
+            treeSet.add(persons[i]);  
+        }  
+        /* 
+         所有的集合类都直接使用引用，从集合处还是从数组处改变集合中对象的状态将引起变化， 
+         其结果对于集合的语义而言是不可预知的，所以不要改变集合中对象的状态 
+         可以整体替换对象 
+          */  
+       // persons[1].setId("Number0");  
+  
+        /* 
+            ArrayList 
+         */  
+        System.out.println("ArrayList");  
+        arrayList.remove(0);  
+        // 数组访问不能越界 抛出IndexOutOfBoundsException  
+        // System.out.println(arrayList.get(5));  
+        Iterator<Person> arrayListIterator = arrayList.iterator();  
+        // 检查当前指针是否有元素，开始时指向第一个元素  
+        while(arrayListIterator.hasNext()){  
+            // 输出当前指针指向的元素，并移动到下一个元素  
+            System.out.println(arrayListIterator.next());  
+            /* 
+                  Person{id='B13080127', name='qqy', age=23, grade='2013'} 
+                  Person{id='B13080129', name='lcq', age=24, grade='2013'} 
+                  Person{id='B13080126', name='gjj', age=23, grade='2013'} 
+                  Person{id='B13080130', name='xt', age=23, grade='2013'} 
+             */  
+        }  
+        System.out.println("sort arraylist");  
+        // collections.sort(list)：专门用来对list进行排序  
+        Collections.sort(arrayList);  
+        for(Person p : arrayList){  
+            System.out.println(p);  
+            /* 
+                Person{id='B13080126', name='gjj', age=23, grade='2013'} 
+                Person{id='B13080127', name='qqy', age=23, grade='2013'} 
+                Person{id='B13080129', name='lcq', age=24, grade='2013'} 
+                Person{id='B13080130', name='xt', age=23, grade='2013'} 
+             */  
+        }  
+        /* 
+            链表 LinkedList：操作对应的iteartor能够起变化 
+         */  
+        System.out.println("LinkedList");  
+        Iterator<Person> linkedListIterator = linkedList.listIterator();  
+        // 指向第二项  
+        linkedListIterator.next();  
+        // 指向第三项  
+        linkedListIterator.next();  
+        // 删除当前指针的前一项，即第二项  
+        linkedListIterator.remove();  
+        for(Person person : linkedList){  
+            System.out.println(person);  
+            /* 
+                    Person{id='B13080126', name='gjj', age=23, grade='2013'} 
+                    Person{id='B13080128', name='gzx', age=23, grade='2013'} 
+                    Person{id='B13080129', name='lcq', age=24, grade='2013'} 
+                    Person{id='B13080130', name='xt', age=23, grade='2013'} 
+             */  
+        }  
+        // equals  
+        Person p1 = new Person("B13080133", "xt", 23, "2013");  
+        System.out.println(linkedList.contains(p1)); // true  
+        System.out.println("sort linkedlist");  
+        Collections.sort(linkedList);  
+        for(Person p : linkedList){  
+            System.out.println(p);  
+            /* 
+                Person{id='B13080126', name='gjj', age=23, grade='2013'} 
+                Person{id='B13080127', name='qqy', age=23, grade='2013'} 
+                Person{id='B13080129', name='lcq', age=24, grade='2013'} 
+                Person{id='B13080130', name='xt', age=23, grade='2013'} 
+             */  
+        }  
+  
+        /* 
+            PriorityQueue : 底层用queue数组实现，contains使用equals比较 
+         */  
+        System.out.println("PriorityQueue");  
+        // 两个方法为空时，都返回null  
+        // 获得队头元素并删除  
+        System.out.println(pq.poll()); // Person{id='B13080126', name='gjj', age=23, grade='2013'}  
+        // 获得队头元素，不删除  
+        System.out.println(pq.peek()); // Person{id='B13080127', name='qqy', age=23, grade='2013'}  
+        try {  
+            Person tmp = (Person)persons[0].clone();  
+            tmp.setId("setId");  
+            // 用equals()比较  
+            // tmp.setAge(13);  
+            System.out.println(pq.contains(tmp)); // true  
+            // 按照compare(To)排序，允许有相等的元素  
+            pq.offer(tmp);  
+            while(!pq.isEmpty()){  
+                System.out.println(pq.poll());  
+                /* 
+                    Person{id='B13080127', name='qqy', age=23, grade='2013'} 
+                    Person{id='B13080128', name='gzx', age=23, grade='2013'} 
+                    Person{id='B13080129', name='lcq', age=24, grade='2013'} 
+                    Person{id='B13080130', name='xt', age=23, grade='2013'} 
+                    Person{id='setId', name='gzx', age=23, grade='2013'} 
+                 */  
+            }  
+        } catch (CloneNotSupportedException e) {  
+            e.printStackTrace();  
+        }  
+  
+        /* 
+            HashMap：看hashCode和equals起作用的数据成员，以此来判重 
+         */  
+        System.out.println("HashMap");  
+        try {  
+            Person tmp = (Person)persons[0].clone();  
+            tmp.setId("newId");  
+            // 键不替换，覆盖值，因为哈希值与ID无关  
+            hashMap.put(tmp, 59);  
+            Set<Map.Entry<Person, Integer> > keyValue = hashMap.entrySet();  
+            for(Map.Entry<Person, Integer> it : keyValue){  
+                System.out.println(it.getKey() + " : " + it.getValue());  
+                //it.getKey().setAge(1000);  
+                /* 
+                    Person{id='B13080128', name='gzx', age=23, grade='2013'} : 59 
+                    Person{id='B13080127', name='qqy', age=23, grade='2013'} : 76 
+                    Person{id='B13080130', name='xt', age=23, grade='2013'} : 70 
+                    Person{id='B13080129', name='lcq', age=24, grade='2013'} : 99 
+                    Person{id='B13080126', name='gjj', age=23, grade='2013'} : 92 
+                 */  
+            }  
+        } catch (CloneNotSupportedException e) {  
+            e.printStackTrace();  
+        }  
+  
+        /* 
+               TreeMap：看比较器Comparable(Comparator)中的数据成员，以此来去重 
+         */  
+        System.out.println("TreeMap");  
+        try {  
+            Person tmp = (Person)persons[0].clone();  
+            tmp.setName("kitty");  
+            // 键不替换，覆盖，只和ID有关，不管名字是否其变化  
+            treeMap.put(tmp, 100);  
+            // 改变已经存在的实例的键，结果不可知，下面注释去掉将出现部分值为null  
+            // persons[0].setId("AAAA");  
+            for(Person person : treeMap.keySet()){  
+                System.out.println(person + " : " + treeMap.get(person));  
+                /* 
+                    Person{id='B13080126', name='gjj', age=23, grade='2013'} : 92 
+                    Person{id='B13080127', name='qqy', age=23, grade='2013'} : 76 
+                    Person{id='B13080128', name='gzx', age=23, grade='2013'} : 100 
+                    Person{id='B13080129', name='lcq', age=24, grade='2013'} : 99 
+                    Person{id='B13080130', name='xt', age=23, grade='2013'} : 70 
+                 */  
+            }  
+        } catch (CloneNotSupportedException e) {  
+            e.printStackTrace();  
+        }  
+  
+        /* 
+            HashSet/TreeSet 有两种遍历方法：for each 和 iterator 
+            分别与HashMap和TreeMap去重方法类型 
+         */  
+        System.out.println("HashSet");  
+        Iterator<Person> it2 = hashSet.iterator();  
+        while(it2.hasNext()){  
+            System.out.println(it2.next());  
+            /* 
+                Person{id='B13080128', name='gzx', age=23, grade='2013'} 
+                Person{id='B13080127', name='qqy', age=23, grade='2013'} 
+                Person{id='B13080130', name='xt', age=23, grade='2013'} 
+                Person{id='B13080129', name='lcq', age=24, grade='2013'} 
+                Person{id='B13080126', name='gjj', age=23, grade='2013'} 
+             */  
+        }  
+  
+        try {  
+            Person tmp = (Person)persons[0].clone();  
+            tmp.setId("changeId");  
+            System.out.println(hashSet.contains(tmp)); // true  
+            hashSet.remove(tmp);  
+            System.out.println(hashSet.contains(persons[0])); // false  
+            Iterator<Person> it3 = hashSet.iterator();  
+            while(it3.hasNext()){  
+                System.out.println(it3.next());  
+                /* 
+                    Person{id='B13080127', name='qqy', age=23, grade='2013'} 
+                    Person{id='B13080130', name='xt', age=23, grade='2013'} 
+                    Person{id='B13080129', name='lcq', age=24, grade='2013'} 
+                    Person{id='B13080126', name='gjj', age=23, grade='2013'} 
+                 */  
+            }  
+        } catch (CloneNotSupportedException e) {  
+            e.printStackTrace();  
+        }  
+  
+        /* 
+            TreeSet 
+         */  
+        System.out.println("TreeSet");  
+        Iterator<Person> it4 = treeSet.iterator();  
+        for(Person p : treeSet){  
+            System.out.println(p);  
+            /* 
+                Person{id='B13080126', name='gjj', age=23, grade='2013'} 
+                Person{id='B13080127', name='qqy', age=23, grade='2013'} 
+                Person{id='B13080128', name='gzx', age=23, grade='2013'} 
+                Person{id='B13080129', name='lcq', age=24, grade='2013'} 
+                Person{id='B13080130', name='xt', age=23, grade='2013'} 
+             */  
+        }  
+        try {  
+            Person tmp = (Person)persons[0].clone();  
+            tmp.setAge(50);  
+            // 如果改变ID，则不会被删除掉  
+           // tmp.setId("newId");  
+            System.out.println(treeSet.contains(tmp)); // true  
+            treeSet.remove(tmp);  
+            System.out.println(treeSet.contains(persons[0])); // false  
+            Iterator<Person> it5 = treeSet.iterator();  
+            while(it5.hasNext()){  
+                System.out.println(it5.next());  
+                /* 
+                    Person{id='B13080126', name='gjj', age=23, grade='2013'} 
+                    Person{id='B13080127', name='qqy', age=23, grade='2013'} 
+                    Person{id='B13080129', name='lcq', age=24, grade='2013'} 
+                    Person{id='B13080130', name='xt', age=23, grade='2013'} 
+                 */  
+            }  
+        } catch (CloneNotSupportedException e) {  
+            e.printStackTrace();  
+        }  
+    }  
+}  
+class Person implements Comparable<Person>, Cloneable{  
+    private String id;  
+    private String name;  
+    private int age;  
+    private String grade;  
+  
+    public Person(String id, String name, int age, String grade){  
+        this.id = id;  
+        this.name = name;  
+        this.age = age;  
+        this.grade = grade;  
+    }  
+  
+    public String getId() {  
+        return id;  
+    }  
+  
+    public void setId(String id) {  
+        this.id = id;  
+    }  
+  
+    public String getName() {  
+        return name;  
+    }  
+  
+    public void setName(String name) {  
+        this.name = name;  
+    }  
+  
+    public int getAge() {  
+        return age;  
+    }  
+  
+    public void setAge(int age) {  
+        this.age = age;  
+    }  
+  
+    public String getGrade() {  
+        return grade;  
+    }  
+  
+    public void setGrade(String grade) {  
+        this.grade = grade;  
+    }  
+  
+    @Override  
+    public Object clone() throws CloneNotSupportedException {  
+        return super.clone();  
+    }  
+  
+    // equals 和 hashCode要保持一致  
+    // 不比较id  
+    @Override  
+    public boolean equals(Object o) {  
+        if(o == null){  
+            return false;  
+        }  
+        if (this == o) return true;  
+        if (!(o instanceof Person)) return false;  
+  
+        Person person = (Person) o;  
+        return Objects.equals(name, person.name) && Objects.equals(age, person.age) && Objects.equals(grade, person.grade);  
+    }  
+  
+    @Override  
+    public int hashCode() {  
+        // Object...  
+        int result = Objects.hash(name, age, grade);  
+        return result;  
+    }  
+  
+    // 只比较id  
+    @Override  
+    public int compareTo(Person o) {  
+        return id.compareTo(o.id);  
+    }  
+  
+    @Override  
+    public String toString() {  
+        return "Person{" +  
+                "id='" + id + '\'' +  
+                ", name='" + name + '\'' +  
+                ", age=" + age +  
+                ", grade='" + grade + '\'' +  
+                '}';  
+    }  
+}  
+```
+从上述例子可以看出，TreeSet和TreeMap去重的关键是看比较器的compare方法，影响contains或者containsKey的结果。
+而HashSet和HashMap去重主要看equals方法。其他集合包含某元素看equals。
+实现这些方法时注意选好相关属性。建议查看源码的相关方法。注意equals为true时，hashCode必须相等。
