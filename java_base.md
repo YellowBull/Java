@@ -156,10 +156,6 @@ final修饰的类不能被继承，修饰的方法不能被覆盖。对于全局
 这点与C++的顶层const类似。状态不改变的类称为不可变类。注意两者的区别。
 ```java
 package knowledge;  
-  
-/** 
- * Created by gzx on 16-12-29. 
- */  
 // final类，不可以继承，所有方法均为final  
 public final class FinalDemo {  
     // 全局final成员必须初始化  
@@ -223,10 +219,6 @@ javac 中的-d选项用于指定生成的类放在哪个文件夹下，并在该
 import java.io.*;  
 import java.util.HashMap;  
 import java.util.Map;  
-  
-/** 
- * Created by jessin on 17-2-26. 
- */  
 abstract class AbstractLineProcessor {  
     protected abstract void processLine(String line);  
     public abstract int getAns();  
@@ -288,7 +280,7 @@ public class Main{
         map.put("letter", new LetterLineProcessor());  
   
         // 匿名内部类，实现对一行进行所有的行处理，最后得到结果  
-        AbstractLineProcessor all = new AbstractLineProcessor(){  //匿名实例化
+        AbstractLineProcessor all = new AbstractLineProcessor(){ // 匿名实例化
         
             protected void processLine(String line) {  
                 for(AbstractLineProcessor lineProcessor : map.values()){  
@@ -307,6 +299,107 @@ public class Main{
     }  
 }  
 ```
+内部类<br/>
+除了静态内部类以外，内部类可以访问外部类的成员属性，与其权限无关。
+这也是编译器的杰作。编译器会把外部类作为内部类的构造函数的一个参数，并在内部类的实例化处传递外部类的this，这样内部类内部会有这个this的final成员属性。<br/>
+全局内部类<br/>
+全局内部类编译后得到一个叫做外部类名$内部类名的文件。<br/>
+```java
+package knowledge;  
+  
+import java.awt.event.ActionEvent;  
+import java.awt.event.ActionListener;  
+import java.util.Date;  
+import javax.swing.Timer;  
+public class TalkingClock {  
+    private int interval;  
+    private boolean beep;  
+    public TalkingClock(int interval, boolean beep){  
+        this.interval = interval;  
+        this.beep = beep;  
+    }  
+    public void start(){  
+        ActionListener printer = new TimePrinter();  
+        Timer timer = new Timer(interval, printer);  
+        timer.start();  
+    }  
+      
+    public class TimePrinter implements ActionListener {  
+        // 内部类可以直接使用外部类的属性beep  
+        @Override  
+        public void actionPerformed(ActionEvent e) {  
+            // 这里其实是TalkingClock.this.beep  
+            if(!beep){  
+                return;  
+            }  
+            // this 出现在这里，则是TimePrinter的实例  
+            Date now = new Date();  
+            System.out.println("time : " + now);  
+        }  
+    }  
+  
+    /* 
+        每隔一秒，打印出日期，无限循环 
+        time : Thu Dec 29 14:36:35 CST 2016 
+        time : Thu Dec 29 14:36:36 CST 2016 
+        time : Thu Dec 29 14:36:37 CST 2016 
+     */  
+    public static void main(String[] args){  
+        new TalkingClock(1000, true).start();  
+        while(true){  
+        }  
+    }  
+} 
+```
+局部内部类<br/>
+局部内部类定义在方法中，包含匿名内部类。这里有一个约束，也就是方法中的局部变量被局部内部类访问时，一般要用final修饰，
+因为方法结束后局部变量也被释放掉了，内部类中会有该属性。如果不用final修饰，则方法体中不能出现任何改变变量的方法，否则编译出错。<br/>
+匿名内部类<br/>
+匿名内部类，没有类名，不能有构造函数，且必须将实参在实现时给出，只能有一个实例，类似Lambda表达式，闭包。<br/>
+静态内部类<br/>
+静态内部类，没有外部类实例的this，不能访问任何外部类非静态成员或方法。静态内部类的好处是可以避免与其他类命名冲突。<br/>
+## 异常体系
+所有异常都是Throwable(不是接口，也不是抽象类，是普通类，可以直接使用)的子类，有两个派系：Error和Exception。
+Exception可以分为RuntimeException和IOException。
+Error一般是系统级别的错误，这种错误是我们无法解决的，而RuntimeException是程序的逻辑错误，一般是可以解决的，
+例如数组越界，空指针，错误类型转换等，这类错误我们无需显式处理。RuntimeException和Error称为未检查异常，而其他异常称为检查异常。
+可以使用throw new Exception(message)抛出异常。当一个方法抛出检查异常时，如果当前方法可以解决，用try-catch-finally捕获。
+否则使用throws向其他调用者继续抛出。未检查异常可以不用做任何处理，直接抛出。<br/>
+## 泛型
+泛型类似C++中的模板。但是Java中的泛型是在编译器层面实现的，在虚拟机中不管具体的参数如何，都只有一个对应的类，参数会被擦掉，变成Object。
+泛型分为泛型类和泛型方法。泛型类在类名后加<T>，而对于泛型方法则在返回类型前加<T>。 <br/>
+? extends classA表示classA或classA的子类 <br/>
+? super classA表示classA或classA的父类 <br/>
+对于某些函数，对于泛型参数有一些约束，如 <br/>
+public static<T extends Comparable<? super T> > T min(T[] data) <br/>
+表示T必须实现Comparable<K>接口，且K是T的父类。也就是父类K implements Comparable<K>，然后T extends K，从而T extends Comparable<K> <br/>
+而且对于有关系的子类subclass和父类superclass，ArrayList<subclass>和ArrayList<superclass>没有任何关系，不能赋值。但是List<subclass>= ArrayList<subclass>是成立的。 <br/>
+## 集合框架
+集合主要有两大派系：Collection和Map。其中Collection包含List、Queue、Set。List包含ArrayList和LinkedList，有序集合。
+Queue包含PriorityQueue，有序集合。Set包含HashSet和TreeSet，无序集合。Collection实现了Iterable接口。
+用add/get(index)添加元素，用set(index,value)设置元素，用remove删除元素。而Map包含HashMap和TreeMap。
+集合体系提供了接口和抽象类，抽象类主要给类库扩展者使用，而接口提供给用户使用。
+遍历Collection可以用iterator方法，返回Iterator接口的实例，或者for each。
+而Map使用put和get添加获取值，一般使用keySet和entrySet方法遍历，进而获得key-value。<br/>
+LinkedList用链表实现的。ArrayList用动态数组实现的，当达到一定程度时，会重新分配新的数组，并拷贝旧的数组值。
+HashSet/HashMap使用拉链法实现，底层是数组头加链表实现，使用hashCode映射到对应的数组（应当尽量减少碰撞，减少链表的长度）。
+TreeSet/TreeMap使用红黑树实现，是一种高效的排序树状结构。PriorityQueue使用堆实现，默认是小根堆。
+如果不要求有序则使用Hash更加高效。
+哈希要注意对象的hashCode和equals方法，而排序要注意实现Comparable接口，或者提供Comparator比较器。<br/>
+所有的集合类都直接保存引用，无论从集合处（内部）还是从数组处（外部）改变集合中对象的状态都将引起变化，
+因为引用是一样的，其结果对于集合的语义而言是不可预知的。所以不要改变集合中对象的状态，尽量用匿名构造，这样就不会有问题。
+但可以整体替换对象，把对象看成一个原子。<br/>
+Collections提供了一些算法和集合的常用操作：<br/>
+Collections.sort(list)：主要对List类型进行排序，可以指定比较器<br/>
+Collections.binarySearch(list, key, comparrator)：二分查找元素<br/>
+Collections.copy(list to, list from) : 复制列表<br/>
+Collections.min(colleciton, comparator)<br/>
+Collections.max(colleciton, comparator)<br/>
+除此之外，还有早期的位于上述架构之外的集合，如Vector，HashTable，Properties，Stack等集合。Vector和HashTable都进行了同步。如果是单线程，用ArrayList等会更高效。<br/>
+
+
+
+
 
 
 
