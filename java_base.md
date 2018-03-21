@@ -187,7 +187,7 @@ public final class FinalDemo {
     }  
 }  
 ```
-类的初始化顺序<br/>
+[类的初始化顺序](https://www.cnblogs.com/qiuyong/p/6407418.html?utm_source=itdadao&utm_medium=referral)<br/>
 有几个原则。静态成员和成员属性一开始都有默认值，如0,false,null，这是在定义初始化之前的。
 静态成员是类级别的，所以在类加载时就已经初始化了，先定义初始化，然后运行静态块，且只初始化一次。
 数据成员定义时先初始化，然后才是构造函数。父类先于子类。某个实例是子类的实例，必然是父类的实例，这是instanceof的语义。
@@ -203,9 +203,110 @@ public final class FinalDemo {
 子类数据成员定义时初始化<br/>
 子类构造函数<br/>
 
-
-
-
+命令行编译和运行<br/>
+javac 中的-d选项用于指定生成的类放在哪个文件夹下，并在该文件夹下生成包目录。
+如果不指定，则class文件与java源码文件在同一个目录，不会生成包目录。javac和java都有-cp选项。这个选项用于指定class字节码文件的目录
+（这个目录下有完整的类包目录），或者指定对应的jar库（必须指定到具体的jar，不能只指定到jar所在的目录）。
+当然，这个选项可以通过设置一个环境变量CLASSPATH替代，对于Linux，分隔符为:。
+有一个区别，javac会自动查找当前目录，而java则只认定指定的cp选项，没有设置当前目录(.)，则可能会出错。
+-cp使得在任何目录下都可以运行java程序。javac编译的文件以.java为后缀。java 运行的类必须给出是全名，且有正确的main函数，类是public。<br/>
+编译：javac -d bin -cp lib/guava-17.0.jar src/a/A.java src/b/B.java  <br/>
+运行：java -cp bin:lib/guava-17.0.jar a.A  <br/>
+抽象类和接口 <br/>
+抽象类，主要是类中有实现不了的抽象方法，加abstract，不用写出方法体。
+或者所有方法都实现了，还可以添加abstract关键字，形成抽象类，希望被扩展。
+接口有public接口和default接口，成员属性默认全部是public final static，方法全部是public。
+接口主要是使得实现类符合某一规范，如要进行排序，则必须实现Comparable接口，或者提供Comparator比较器。
+有些接口没有任何内容，称为标记接口。接口之间可以存在继承关系，用extends，表示扩展一个接口。
+不实现抽象方法或者接口的方法，则还是抽象类。抽象类不可以实例化，但可以用匿名类实例化。 <br/>
+```java
+import java.io.*;  
+import java.util.HashMap;  
+import java.util.Map;  
+  
+/** 
+ * Created by jessin on 17-2-26. 
+ */  
+abstract class AbstractLineProcessor {  
+    protected abstract void processLine(String line);  
+    public abstract int getAns();  
+    public void processFile(String filename){  
+        BufferedReader bf = null;  
+        try {  
+             bf = new BufferedReader(new FileReader(filename));  
+            String line = null;  
+            while((line = bf.readLine()) != null){  
+                processLine(line);  
+            }  
+        } catch (IOException e) {  
+            e.printStackTrace();  
+        }  
+        finally{  
+            if(bf != null){  
+                try {  
+                    bf.close();  
+                } catch (IOException e) {  
+                    e.printStackTrace();  
+                }  
+            }  
+        }  
+    }  
+}  
+class NumberLineProcessor extends AbstractLineProcessor{  
+    private int ans;  
+    protected void processLine(String line) {  
+        for(char aChar : line.toCharArray()){  
+            if(Character.isDigit(aChar)){  
+                ans++;  
+            }  
+        }  
+    }  
+  
+    public int getAns() {  
+        return ans;  
+    }  
+}  
+  
+class LetterLineProcessor extends AbstractLineProcessor{  
+    private int ans;  
+    protected void processLine(String line) {  
+        for(char aChar : line.toCharArray()){  
+            if(aChar >= 'a' && aChar <= 'z' || aChar >= 'A' && aChar <= 'Z'){  
+                ans++;  
+            }  
+        }  
+    }  
+  
+    public int getAns() {  
+        return ans;  
+    }  
+}  
+public class Main{  
+    public static void main(String[] args){  
+        final Map<String, AbstractLineProcessor> map = new HashMap<String, AbstractLineProcessor>();  
+        map.put("number", new NumberLineProcessor());  
+        map.put("letter", new LetterLineProcessor());  
+  
+        // 匿名内部类，实现对一行进行所有的行处理，最后得到结果  
+        AbstractLineProcessor all = new AbstractLineProcessor(){  //匿名实例化
+        
+            protected void processLine(String line) {  
+                for(AbstractLineProcessor lineProcessor : map.values()){  
+                    lineProcessor.processLine(line);  
+                }  
+            }  
+  
+            public int getAns() {  
+                return 0;  
+            }  
+        };  
+        all.processFile("hello.txt");  
+        for(AbstractLineProcessor lineProcessor : map.values()){  
+            System.out.println(lineProcessor.getAns());  
+        }  
+    }  
+}  
+```
 
 
 
