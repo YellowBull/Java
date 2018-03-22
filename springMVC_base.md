@@ -8,14 +8,14 @@ HandlerAdapter——>处理器功能处理方法的调用，HandlerAdapter将会
 ModelAndView的逻辑视图名——> ViewResolver， ViewResolver将把逻辑视图名解析为具体的View，通过这种策略模式，很容易更换其他视图技术；<br/>
 View——>渲染，View会根据传进来的Model模型数据进行渲染，此处的Model实际是一个Map数据结构，因此很容易支持其他视图技术；<br/>
 返回控制权给DispatcherServlet，由DispatcherServlet返回响应给用户，到此一个流程结束。<br/>
-## [SpringMVC入门](http://www.cnblogs.com/fangjian0423/p/springMVC-introduction.html)
-## [SpringMVC核心分发器DispatcherServlet解析](http://www.cnblogs.com/fangjian0423/p/springMVC-dispatcherServlet.html)
-## [SpringMVC请求时如何找到正确的Controller源码解析](http://www.cnblogs.com/fangjian0423/p/springMVC-request-mapping.html)
-## [SpringMVC中Controller的方法中参数的工作原理](http://www.cnblogs.com/fangjian0423/p/springMVC-request-param-analysis.html)
-## [SpringMVC关于json、xml自动转换的原理研究](http://www.cnblogs.com/fangjian0423/p/springMVC-xml-json-convert.html)
-## [SpringMVC类型转换、数据绑定详解](http://www.cnblogs.com/fangjian0423/p/springMVC-databind-typeconvert.html)
-## [SpringMVC拦截器详解](http://www.cnblogs.com/fangjian0423/p/springMVC-interceptor.html)
-## [SpringMVC视图机制详解](http://www.cnblogs.com/fangjian0423/p/springMVC-view-viewResolver.html)
-## [SpringMVC异常处理机制详解](http://www.cnblogs.com/fangjian0423/p/springMVC-exception-analysis.html)
+#### [SpringMVC入门](http://www.cnblogs.com/fangjian0423/p/springMVC-introduction.html)
+#### [SpringMVC核心分发器DispatcherServlet解析](http://www.cnblogs.com/fangjian0423/p/springMVC-dispatcherServlet.html)
+#### [SpringMVC请求时如何找到正确的Controller源码解析](http://www.cnblogs.com/fangjian0423/p/springMVC-request-mapping.html)
+#### [SpringMVC中Controller的方法中参数的工作原理](http://www.cnblogs.com/fangjian0423/p/springMVC-request-param-analysis.html)
+#### [SpringMVC关于json、xml自动转换的原理研究](http://www.cnblogs.com/fangjian0423/p/springMVC-xml-json-convert.html)
+#### [SpringMVC类型转换、数据绑定详解](http://www.cnblogs.com/fangjian0423/p/springMVC-databind-typeconvert.html)
+#### [SpringMVC拦截器详解](http://www.cnblogs.com/fangjian0423/p/springMVC-interceptor.html)
+#### [SpringMVC视图机制详解](http://www.cnblogs.com/fangjian0423/p/springMVC-view-viewResolver.html)
+#### [SpringMVC异常处理机制详解](http://www.cnblogs.com/fangjian0423/p/springMVC-exception-analysis.html)
 
 
