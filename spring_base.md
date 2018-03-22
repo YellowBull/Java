@@ -8,7 +8,7 @@
 * [事务管理](http://www.mamicode.com/info-detail-1248286.html)：spring提供一个持续的事务管理接口，可以拓展上至本地的事务，下至全局事务JTA。
 * 异常处理：Spring提供方便的技术相关的异常API。
 ## Spring 的组成
-![](http://img.blog.csdn.net/20160512174600469)
+![](http://img.blog.csdn.net/20160512174600469)<br/>
 Spring 由七个模块组成
 * Spring core：核心容易提供Spring框架的基本功能。核心容器的主要组建是BeanFactory，他是由工厂模式实现。BeanFactory是用控制反转模式将应用程序的配置
 和依赖性规范与实际应用程序代码分离。
@@ -70,7 +70,7 @@ Bean的构造<br/>
 键和值都可以为任意类型，key, key-ref, value-ref, value可以任意搭配<br/>
 XXX键和值都只能是String类型<br/>
 ## 装配空值
-```Java
+```XML
 <property name="xxx"><null/></property>
 ```
 ## 自动装配(autowiring)
@@ -110,7 +110,7 @@ private Object obj;
 ```
 ## SpEL表达式
 语法形式在#{}中使用表达式,如：<br/>
-```Java
+```XML
 <property name="count" value="#{5}"/>
 ```
 ## @Value
@@ -125,7 +125,7 @@ private String song;
 ```
 ## 自动检测Bean
 <context:component-scan>元素除了完成与<context:annotation-config>一样的工作，还允许Spring自动检测Bean和定义Bean.<context:component-scan>元素会扫描指定的包和其所有子包，如下：<br/>
-```Java
+```XML
 <context:component-scan base-package="com.zzh.dao" />
 ```
 ## 为自动检测标注Bean
@@ -170,86 +170,43 @@ Durable持久性：一旦事务完成，事务的结果应该持久化，这样�
 如果在应用程序中直接使用JDBC来进行持久化，譬如博主采用的是Mybatis，DataSourceTransactionManager会为你处理事务边界。譬如
 ```XML
 <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource"destroy-method="close">
-<property name="driverClassName" value="${driver}" />
-<property name="url" value="${url}" />
-<property name="username" value="zzh" />
-<property name="password" value="zzh" />
-<property name="validationQuery" value="SELECT 1"/>
+  <property name="driverClassName" value="${driver}" />
+  <property name="url" value="${url}" />
+  <property name="username" value="zzh" />
+  <property name="password" value="zzh" />
+  <property name="validationQuery" value="SELECT 1"/>
 </bean>
 <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
-<property name="dataSource" ref="dataSource"/>
+  <property name="dataSource" ref="dataSource"/>
 </bean>
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+## JTA事务
+如果你的事务需要跨多个事务资源（例如：两个或多个数据库；或者如Sping+ActiveMQ整合 需要将ActiveMQ和数据库的事务整合起来），就需要使用JtaTransactionManager:
+```XML
+<bean id="jtaTransactionManager"class="org.springframework.transaction.jta.JtaTransactionManager"/>
+```
+JtaTransactionManager将事务管理的职责委托给了一个JTA的实现。JTA规定了应用程序与一个或多个数据源之间协调事务的标准API。transactionManagerName属性指明了要在JNDI上查找的JTA事务管理器。JtaTransactionManager将事务管理的职责委托给javax.transaction.UserTransaction和javax.transaction.TransactionManager对象。通过UserTransaction.commit()方法来提交事务。类似地，如果事务失败，UserTransaction的rollback()方法将会被调用。<br/>
+## 声明式事务
+尽管Spring提供了多种声明式事务的机制，但是所有的方式都依赖这五个参数来控制如何管理事务策略。因此，如果要在Spring中声明事务策略，就要理解这些参数。(@Transactional)<br/>
+1. 传播行为(propagation)<br/>
+ISOLATION_DEFAULT: 使用底层数据库预设的隔离层级<br/>
+ISOLATION_READ_COMMITTED: 允许事务读取其他并行的事务已经送出（Commit）的数据字段，可以防止Dirty read问题<br/>
+ISOLATION_READ_UNCOMMITTED: 允许事务读取其他并行的事务还没送出的数据，会发生Dirty、Nonrepeatable、Phantom read等问题<br/>
+ISOLATION_REPEATABLE_READ: 要求多次读取的数据必须相同，除非事务本身更新数据，可防止Dirty、Nonrepeatable read问题<br/>
+ISOLATION_SERIALIZABLE: 完整的隔离层级，可防止Dirty、Nonrepeatable、Phantom read等问题，会锁定对应的数据表格，因而有效率问题<br/>
+2. 隔离级别(isolation)<br/>
+PROPAGATION_REQUIRED–支持当前事务，如果当前没有事务，就新建一个事务。这是最常见的选择。<br/>
+PROPAGATION_SUPPORTS–支持当前事务，如果当前没有事务，就以非事务方式执行。<br/>
+PROPAGATION_MANDATORY–支持当前事务，如果当前没有事务，就抛出异常。<br/>
+PROPAGATION_REQUIRES_NEW–新建事务，如果当前存在事务，把当前事务挂起。<br/>
+PROPAGATION_NOT_SUPPORTED–以非事务方式执行操作，如果当前存在事务，就把当前事务挂起。<br/>
+PROPAGATION_NEVER–以非事务方式执行，如果当前存在事务，则抛出异常。<br/>
+PROPAGATION_NESTED–如果当前存在事务，则在嵌套事务内执行。如果当前没有事务，则进行与PROPAGATION_REQUIRED类似的操作。<br/>
+3. 只读(read-only)<br/>
+如果事务只进行读取的动作，则可以利用底层数据库在只读操作时发生的一些最佳化动作，由于这个动作利用到数据库在只读的事务操作最佳化，因而必须在事务中才有效，也就是说要搭配传播行为PROPAGATION_REQUIRED、PROPAGATION_REQUIRES_NEW、PROPAGATION_NESTED来设置。<br/>
+4. 事务超时(timeout)<br/>
+有的事务操作可能延续很长一段的时间，事务本身可能关联到数据表的锁定，因而长时间的事务操作会有效率上的问题，对于过长的事务操作，考虑Roll back事务并要求重新操作，而不是无限时的等待事务完成。 可以设置事务超时期间，计时是从事务开始时，所以这个设置必须搭配传播行为PROPAGATION_REQUIRED、PROPAGATION_REQUIRES_NEW、PROPAGATION_NESTED来设置。<br/>
+5. 回滚规则(rollback-for, no-rollback-for)：rollback-for指事务对于那些检查型异常应当回滚而不提交；no-rollback-for指事务对于那些异常应当继续运行而不回滚。默认情况下，Spring声明事务对所有的运行时异常都进行回滚。<br/>
+```XML
+<tx:advice id="txAdvice" transaction-manager="transactionManager"><tx:attributes><tx:method name="*" /></tx:attributes></tx:advice>
+```
