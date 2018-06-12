@@ -98,10 +98,10 @@ public class Object {
 
 ## String 类
 1、String类是不可变类，持有一个不可变的字符数组的引用来保存整个字符串<br>
-2、equals()方法比较数组长度和每个元素
-3、compareTo(anotherString)方法先比较共同长度部分，返回第一个不同字符的asci码减法结果，如果前面都相同则返回数组长度相减的结果
-4、trim()方法去掉字符串两端Unicode编码小于等于32(\u0020)的所有字符(包括空格)
-5、intern()方法用equals()去常量池中查找本字符串，如果找不到则加入方法区的常量池
+2、equals()方法比较数组长度和每个元素<br>
+3、compareTo(anotherString)方法先比较共同长度部分，返回第一个不同字符的asci码减法结果，如果前面都相同则返回数组长度相减的结果<br>
+4、trim()方法去掉字符串两端Unicode编码小于等于32(\u0020)的所有字符(包括空格)<br>
+5、intern()方法用equals()去常量池中查找本字符串，如果找不到则加入方法区的常量池<br>
 ```Java
 public final class String implements java.io.Serializable, Comparable<String>, CharSequence {
 
