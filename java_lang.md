@@ -308,10 +308,9 @@ public final class String implements java.io.Serializable, Comparable<String>, C
 //给出了一系列的字符数组的操作方法用于字符串构建
 abstract class AbstractStringBuilder implements Appendable, CharSequence {
 
-	//存储字符串(可变的)
-    char[] value;
-    //记录存储了多少个字符
-    int count;
+    char[] value;//存储字符串(可变的)
+    
+    int count;//记录存储了多少个字符
    
     //下面两方法用于判断数组扩容
     public void ensureCapacity(int minimumCapacity) {
@@ -482,5 +481,102 @@ abstract class AbstractStringBuilder implements Appendable, CharSequence {
         return this;
     }
     //下面是子字符数组下标获取相关方法,实现比较简单,省略
+}
+```
+<hr/>
+
+## StringBuilder 类
+
+StringBuilder 覆盖了父类AbstractStringBuilder的一些字符数组操作的常用方法，基本上都依赖于父类实现。<br/>
+值的注意的就是toString()方法将字符数组返回一个新的String对象，且方法均非线程安全。<br/>
+```Java
+public final class StringBuilder extends AbstractStringBuilder implements java.io.Serializable, CharSequence
+{
+	//构造器
+    public StringBuilder() {
+        super(16);
+    }
+    public StringBuilder(int capacity) {
+        super(capacity);
+    }
+    public StringBuilder(String str) {
+        super(str.length() + 16);
+        append(str);
+    }
+    public StringBuilder(CharSequence seq) {
+        this(seq.length() + 16);
+        append(seq);
+    }
+    
+    //拼接字符串
+    //有多个重载,均是调用父类AbstractStringBuilder的实现,省略
+    @Override
+    public StringBuilder append(Object obj) {
+        return append(String.valueOf(obj));
+    }
+    
+    @Override
+    public StringBuilder appendCodePoint(int codePoint) {
+        super.appendCodePoint(codePoint);
+        return this;
+    }
+    
+    //删除字符
+    @Override
+    public StringBuilder deleteCharAt(int index) {
+        super.deleteCharAt(index);
+        return this;
+    }
+
+    //替换字符
+    @Override
+    public StringBuilder replace(int start, int end, String str) {
+        super.replace(start, end, str);
+        return this;
+    }
+
+    //插入字符
+    //有多个重载,均是调用父类AbstractStringBuilder的实现,省略
+    @Override
+    public StringBuilder insert(int index, char[] str, int offset,
+                                int len)
+    {
+        super.insert(index, str, offset, len);
+        return this;
+    }
+
+    //下标相关
+    //有多个重载,均是调用父类AbstractStringBuilder的实现,省略
+    @Override
+    public int indexOf(String str) {
+        return super.indexOf(str);
+    }
+
+    //字符数组反序
+    @Override
+    public StringBuilder reverse() {
+        super.reverse();
+        return this;
+    }
+
+    //返回修改后的字符串对象
+    @Override
+    public String toString() {
+        //这里创建了新的字符串
+        return new String(value, 0, count);
+    }
+
+    private void writeObject(java.io.ObjectOutputStream s)
+        throws java.io.IOException {
+        s.defaultWriteObject();
+        s.writeInt(count);
+        s.writeObject(value);
+    }
+    private void readObject(java.io.ObjectInputStream s)
+        throws java.io.IOException, ClassNotFoundException {
+        s.defaultReadObject();
+        count = s.readInt();
+        value = (char[]) s.readObject();
+    }
 }
 ```
