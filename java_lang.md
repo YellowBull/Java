@@ -728,7 +728,7 @@ public final class StringBuffer extends AbstractStringBuilder implements java.io
 不可变成员value保存实际值,在-128\~127之间。<br/>
 hashCode()返回的就是value。equals()比较的就是value。<br/>
 n转为无符号的int值或者long值时,与0xff做&操作,n为正返回n,n为负返回256+n。<br/>
-申明静态成员内部类BateCache,使用数组缓存-128~127的Byte对象，自动装箱会调用valueOf(),从数组缓存中找到并返回缓存对象，如果使用构造函数创建则不会用到缓存对象。<br/>
+申明静态成员内部类BateCache,使用数组缓存-128\~127的Byte对象，自动装箱会调用valueOf(),从数组缓存中找到并返回缓存对象，如果使用构造函数创建则不会用到缓存对象。<br/>
 ```Java
 public final class Byte extends Number implements Comparable<Byte> {
 	
