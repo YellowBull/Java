@@ -580,3 +580,221 @@ public final class StringBuilder extends AbstractStringBuilder implements java.i
     }
 }
 ```
+<hr/>
+
+## StringBuffer 类
+StringBuffer 如同StringBuilder 一样，覆盖了父类AbstractStringBuilder一系列字符数组的相关操作方法，底层也都是调用父类实现但是外层方法加了同步关键字保证线程安全。<br/>
+```Java
+public final class StringBuffer extends AbstractStringBuilder implements java.io.Serializable, CharSequence
+{
+	//字符数组,可变,不可序列化
+	private transient char[] toStringCache;
+	
+	//构造器
+	public StringBuffer() {
+	    super(16);
+	}
+	public StringBuffer(int capacity) {
+	    super(capacity);
+	}
+	public StringBuffer(String str) {
+	    super(str.length() + 16);
+	    append(str);
+	}
+	public StringBuffer(CharSequence seq) {
+	    this(seq.length() + 16);
+	    append(seq);
+	}
+
+	
+	//拼接字符串
+	//有一系列重载这里省略,均是利用父类实现,仅仅是添加了同步关键字
+	@Override
+	public synchronized StringBuffer append(Object obj) {
+	    toStringCache = null;
+	    super.append(String.valueOf(obj));
+	    return this;
+	}
+	
+	//获取字符
+	@Override
+	public synchronized void getChars(int srcBegin, int srcEnd, char[] dst,
+	                                  int dstBegin)
+	{
+	    super.getChars(srcBegin, srcEnd, dst, dstBegin);
+	}
+	
+	//修改字符
+	@Override
+	public synchronized void setCharAt(int index, char ch) {
+	    if ((index < 0) || (index >= count))
+	        throw new StringIndexOutOfBoundsException(index);
+	    toStringCache = null;
+	    value[index] = ch;
+	}
+	//删除字符
+	@Override
+	public synchronized StringBuffer deleteCharAt(int index) {
+	    toStringCache = null;
+	    super.deleteCharAt(index);
+	    return this;
+	}
+	//替换字符
+	@Override
+	public synchronized StringBuffer replace(int start, int end, String str) {
+	    toStringCache = null;
+	    super.replace(start, end, str);
+	    return this;
+	}	
+	//返回子字符数组得到的字符串
+	@Override
+	public synchronized String substring(int start) {
+	    return substring(start, count);
+	}
+	//插入字符串
+	//有一系列重载这里省略,均是利用父类实现,仅仅是添加了同步关键字
+	@Override
+	public synchronized StringBuffer insert(int index, char[] str, int offset,
+	                                        int len)
+	{
+	    toStringCache = null;
+	    super.insert(index, str, offset, len);
+	    return this;
+	}
+	//非线程安全的insert方法
+	//包含多个重载
+	//由insert(int, String)调用实现同步
+	@Override
+	public StringBuffer insert(int offset, long l) {
+	    super.insert(offset, l);
+	    return this;
+	}
+	
+	//数组下标相关
+	//有一系列重载这里省略,均是利用父类实现,仅仅是添加了同步关键字
+	@Override
+	public int indexOf(String str) {
+	    return super.indexOf(str);
+	}
+
+	//字符数组反序
+	@Override
+	public synchronized StringBuffer reverse() {
+	    toStringCache = null;
+	    super.reverse();
+	    return this;
+	}
+	
+	//用字符数组返回字符串
+	@Override
+	public synchronized String toString() {
+	    if (toStringCache == null) {
+	        toStringCache = Arrays.copyOfRange(value, 0, count);
+	    }
+	    //这里创建了新的字符串
+	    return new String(toStringCache, true);
+	}
+	
+	//序列化相关
+	private static final java.io.ObjectStreamField[] serialPersistentFields =
+	{
+	    new java.io.ObjectStreamField("value", char[].class),
+	    new java.io.ObjectStreamField("count", Integer.TYPE),
+	    new java.io.ObjectStreamField("shared", Boolean.TYPE),
+	};
+	private synchronized void writeObject(java.io.ObjectOutputStream s)
+	    throws java.io.IOException {
+	    java.io.ObjectOutputStream.PutField fields = s.putFields();
+	    fields.put("value", value);
+	    fields.put("count", count);
+	    fields.put("shared", false);
+	    s.writeFields();
+	}
+	private void readObject(java.io.ObjectInputStream s)
+	    throws java.io.IOException, ClassNotFoundException {
+	    java.io.ObjectInputStream.GetField fields = s.readFields();
+	    value = (char[])fields.get("value", null);
+	    count = fields.get("count", 0);
+	}
+}
+```
+<hr/>
+
+## 基本类型包装类
+基本类型(byte char short int long float double boolean)的包装类均继承了Number接口。<br/>
+用于将基本类型到引用类型的转换，下面给出部分分析。<br/>
+### Byte：
+
+不可变成员value保存实际值,在-128~127之间。<br/>
+hashCode()返回的就是value。equals()比较的就是value。<br/>
+n转为无符号的int值或者long值时,与0xff做&操作,n为正返回n,n为负返回256+n。<br/>
+申明静态成员内部类BateCache,使用数组缓存-128~127的Byte对象，自动装箱会调用valueOf(),从数组缓存中找到并返回缓存对象，如果使用构造函数创建则不会用到缓存对象。<br/>
+```Java
+public final class Byte extends Number implements Comparable<Byte> {
+	
+	//保存byte值
+    private final byte value;
+
+	//-128~127
+    public static final byte   MIN_VALUE = -128;
+    public static final byte   MAX_VALUE = 127;
+    
+    //返回其泛型化的Class对象
+    @SuppressWarnings("unchecked")
+    public static final Class<Byte>  TYPE = (Class<Byte>) Class.getPrimitiveClass("byte");
+
+    //hashCode
+    @Override
+    public int hashCode() {
+        return Byte.hashCode(value);
+    }
+    public static int hashCode(byte value) {
+    	//哈希值就是int类型的value值
+        return (int)value;
+    }
+    
+    //equals
+    public boolean equals(Object obj) {
+        if (obj instanceof Byte) {
+        	//比较的是value,即基本类型的实际值
+            return value == ((Byte)obj).byteValue();
+        }
+        return false;
+    }
+
+    //转为无符号int
+    public static int toUnsignedInt(byte x) {
+    	//0xff就是11111111
+    	//x为正,结果为x
+    	//x为负,结果为256+n
+        return ((int) x) & 0xff;
+    }
+    //转为无符号long
+    public static long toUnsignedLong(byte x) {
+    	//0xffL就是11111111
+        return ((long) x) & 0xffL;
+    }
+    
+    //缓存静态成员内部类
+    private static class ByteCache {
+        private ByteCache(){}
+        //类加载时将-128~127的Byte对象缓存到数组中,整个数组放在方法区的常量池
+        static final Byte cache[] = new Byte[-(-128) + 127 + 1];
+        static {
+            for(int i = 0; i < cache.length; i++)
+                cache[i] = new Byte((byte)(i - 128));
+        }
+    }
+    //自动装箱会调用这个方法,下面两者在-128~127之间等价
+    //Byte a = 20;
+    //Byte a = Byte.valueOf(20)
+    public static Byte valueOf(byte b) {
+        final int offset = 128;
+        //从缓存中获取
+        //下面两个引用在-128~127之间==返回true
+        //Byte a = 20;
+        //Byte b = 20;
+        return ByteCache.cache[(int)b + offset];
+    }
+}
+```
