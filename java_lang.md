@@ -732,15 +732,12 @@ n转为无符号的int值或者long值时,与0xff做&操作,n为正返回n,n为�
 ```Java
 public final class Byte extends Number implements Comparable<Byte> {
 	
-	//保存byte值
-    private final byte value;
-
-	//-128~127
-    public static final byte   MIN_VALUE = -128;
+    private final byte value;//保存byte值
+	
+    public static final byte   MIN_VALUE = -128;//-128~127
     public static final byte   MAX_VALUE = 127;
     
-    //返回其泛型化的Class对象
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings("unchecked") //返回其泛型化的Class对象
     public static final Class<Byte>  TYPE = (Class<Byte>) Class.getPrimitiveClass("byte");
 
     //hashCode
@@ -796,5 +793,403 @@ public final class Byte extends Number implements Comparable<Byte> {
         //Byte b = 20;
         return ByteCache.cache[(int)b + offset];
     }
+}
+```
+Integer也类似，用不可变私有域value保存值，值的范围在-(2^31)到(2^32)-1之间。<br>
+同样申明静态成员内部类使用数组缓存-128到127之间的Integer对象，用这个范围之间的基本数值使用自动装箱创建Integer对象会先调用valueOf从缓存中查找。<br>
+<hr/>
+
+## Thread 类
+
+Thread实现了Runnable接口用来操作线程。<br>
+提供了一系列基本native用来控制线程状态，然后封装了导出方法给客户端使用，源码较长且部分并没有看懂，以后再改。<br>
+Thread类构造方法均调用了init()用来创建线程，线程优先级1~10默认5，使用枚举申明六个线程状态。<br>
+持有一个ThreadLocal.ThreadLocalMap对象引用用来保存线程本地变量(这个Map每个Thread对象都有一个，使用ThreadLocal的弱引用作为key来保存变量值)<br>
+重要的公共导出方法包括：<br>
+yield()放弃cpu资源<br>
+sleep()使线程休眠但是不释放锁<br>
+start()调用native方法start0()开始运行线程<br>
+run()执行Runnable对象的run()也就是执行任务方法<br>
+interrupt()设置中断标志注意此方法与线程状态无关仅设置标志<br>
+interrupted()检查是否设置过标志且可以清除标志<br>
+setPriority()更改优先级<br>
+join()等待子线程终止<br>
+setDaemon()设置为守护线程<br>
+holdsLock()检查是否持有指定锁。<br>
+上述公有方法均是封装了一系列私有或者native方法，已废弃方法省略<br>
+```Java
+//函数式接口：允许使用lambda表达式(而非匿名类)方式给出方法实现
+@FunctionalInterface
+public interface Runnable {
+    public abstract void run();
+}
+```
+```Java
+public class Thread implements Runnable {
+	
+    //确保此方法最先调用,做一些准备工作
+    private static native void registerNatives();
+    static {
+        registerNatives();
+    }
+    //name
+    private volatile char  name[];
+    //优先级
+    private int            priority;
+    //是否守护线程
+    private boolean     daemon = false;
+    //虚拟机状态
+    private boolean     stillborn = false;
+    //线程实际任务
+    private Runnable target;
+    //当前线程所属线程组
+    private ThreadGroup group;
+    //线程类加载器
+    private ClassLoader contextClassLoader;
+    //断阻塞器：当线程发生IO中断时，需要在线程被设置为中断状态后调用该对象的interrupt方法
+    volatile Object parkBlocker;   
+    //阻塞器对象,如果线程使用LockSupport的park进行挂起(而不是wait挂起)这个对象用来表示挂起原因,一般用来dump文件在出问题时方便分析
+    private volatile Interruptible blocker;    
+    //interrupt()使用它做锁对象
+    private final Object blockerLock = new Object();    
+    //保存线程本地变量的一个Map
+    ThreadLocal.ThreadLocalMap threadLocals = null;
+    //保存可继承的线程本地变量的一个Map
+    ThreadLocal.ThreadLocalMap inheritableThreadLocals = null;
+    //指定线程栈大小,一般默认为0并由jvm指定,且某些jvm不支持此属性
+    private long stackSize;
+    //线程id
+    private long tid;
+    //线程状态
+    private volatile int threadStatus = 0;
+    //线程状态枚举类
+    public enum State {
+        NEW,
+        RUNNABLE,
+        BLOCKED,
+        WAITING,
+        TIMED_WAITING,
+        TERMINATED;
+    }
+    //线程优先级1~10,默认5
+    public final static int MIN_PRIORITY = 1;
+    public final static int NORM_PRIORITY = 5;
+    public final static int MAX_PRIORITY = 10;
+    
+    //构造器
+    //利用init()进行一系列重载,这里省略
+    public Thread(ThreadGroup group, Runnable target, String name,long stackSize) {
+    	// 分配新的 Thread 对象，以便将 target 作为其运行对象，将指定的 name 作为其名称，作为 group 所引用的线程组的一员，并具有指定的堆栈大小。
+        init(group, target, name, stackSize);
+    }
+    //init
+    //用于创建线程,构造器会用到
+    private void init(ThreadGroup g, Runnable target, String name, long stackSize, AccessControlContext acc) {
+        if (name == null) {
+            throw new NullPointerException("name cannot be null");
+        }
+        this.name = name.toCharArray();
+        Thread parent = currentThread();
+        SecurityManager security = System.getSecurityManager();
+        if (g == null) {
+            if (security != null) {
+                g = security.getThreadGroup();
+            }
+            if (g == null) {
+                g = parent.getThreadGroup();
+            }
+        }
+        g.checkAccess();
+        if (security != null) {
+            if (isCCLOverridden(getClass())) {
+                security.checkPermission(SUBCLASS_IMPLEMENTATION_PERMISSION);
+            }
+        }
+        g.addUnstarted();
+        this.group = g;
+        this.daemon = parent.isDaemon();
+        this.priority = parent.getPriority();
+        if (security == null || isCCLOverridden(parent.getClass()))
+            this.contextClassLoader = parent.getContextClassLoader();
+        else
+            this.contextClassLoader = parent.contextClassLoader;
+        this.inheritedAccessControlContext =
+                acc != null ? acc : AccessController.getContext();
+        this.target = target;
+        setPriority(priority);
+        if (parent.inheritableThreadLocals != null)
+            this.inheritableThreadLocals =
+                ThreadLocal.createInheritedMap(parent.inheritableThreadLocals);
+        this.stackSize = stackSize;
+        tid = nextThreadID();
+    }
+    //返回对当前正在执行的线程对象的引用。
+    public static native Thread currentThread();
+    //暂停当前正在执行的线程对象，并执行其他线程。
+    public static native void yield();
+    //线程休眠
+    public static native void sleep(long millis) throws InterruptedException;
+    //克隆
+    protected Object clone() throws CloneNotSupportedException {
+    	//直接抛出异常
+        throw new CloneNotSupportedException();
+    } 
+    //开始运行线程
+    public synchronized void start() {
+        if (threadStatus != 0)
+            throw new IllegalThreadStateException();
+        group.add(this);
+        boolean started = false;
+        try {
+            //调用start0(),由jvm调用其run()
+            start0();
+            started = true;
+        } finally {
+            try {
+                if (!started) {
+                    group.threadStartFailed(this);
+                }
+            } catch (Throwable ignore) {
+            }
+        }
+    }
+    private native void start0();
+    //任务方法
+    public void run() {
+        if (target != null) {
+            target.run();
+        }
+    }
+    //退出
+    private void exit() {
+        if (group != null) {
+            group.threadTerminated(this);
+            group = null;
+        }
+        target = null;
+        threadLocals = null;
+        inheritableThreadLocals = null;
+        inheritedAccessControlContext = null;
+        blocker = null;
+        uncaughtExceptionHandler = null;
+    }
+    //通知线程可以退出了,设置标志位,注意此方法与线程状态无关系,仅仅设置标志位
+    public void interrupt() {
+        if (this != Thread.currentThread())
+            checkAccess();
+        synchronized (blockerLock) {
+            Interruptible b = blocker;
+            if (b != null) {
+                interrupt0(); 
+                b.interrupt(this);
+                return;
+            }
+        }
+        interrupt0();
+    }
+    private native void interrupt0();
+    //interrupted()：返回是否被通知退出过,此方法调用后会清除标志位,即消除通知,通常结合while实现线程的安全中断
+    public static boolean interrupted() {
+        return currentThread().isInterrupted(true);
+    }
+    public boolean isInterrupted() {
+        return isInterrupted(false);
+    }
+    void blockedOn(Interruptible b) {
+        synchronized (blockerLock) {
+            blocker = b;
+        }
+    }
+    private native boolean isInterrupted(boolean ClearInterrupted);
+    //测试线程是否处于活动状态
+    public final native boolean isAlive();
+    //更改线程的优先级
+    public final void setPriority(int newPriority) {
+        ThreadGroup g;
+        checkAccess();
+        if (newPriority > MAX_PRIORITY || newPriority < MIN_PRIORITY) {
+            throw new IllegalArgumentException();
+        }
+        if((g = getThreadGroup()) != null) {
+            if (newPriority > g.getMaxPriority()) {
+                newPriority = g.getMaxPriority();
+            }
+            setPriority0(priority = newPriority);
+        }
+    }
+    //等待该线程终止
+    public final synchronized void join(long millis) throws InterruptedException {
+        long base = System.currentTimeMillis();
+        long now = 0;
+        if (millis < 0) {
+            throw new IllegalArgumentException("timeout value is negative");
+        }
+        if (millis == 0) {
+            while (isAlive()) {
+                wait(0);
+            }
+        } else {
+            while (isAlive()) {
+                long delay = millis - now;
+                if (delay <= 0) {
+                    break;
+                }
+                wait(delay);
+                now = System.currentTimeMillis() - base;
+            }
+        }
+    }
+    public final synchronized void join(long millis, int nanos)
+    throws InterruptedException {
+        if (millis < 0) {
+            throw new IllegalArgumentException("timeout value is negative");
+        }
+        if (nanos < 0 || nanos > 999999) {
+            throw new IllegalArgumentException(
+                                "nanosecond timeout value out of range");
+        }
+        if (nanos >= 500000 || (nanos != 0 && millis == 0)) {
+            millis++;
+        }
+        join(millis);
+    }
+    public final void join() throws InterruptedException {
+        join(0);
+    }
+    //标记为守护线程或用户线程
+    public final void setDaemon(boolean on) {
+        checkAccess();
+        if (isAlive()) {
+            throw new IllegalThreadStateException();
+        }
+        daemon = on;
+    }
+    //检查可访问性
+    public final void checkAccess() {
+        SecurityManager security = System.getSecurityManager();
+        if (security != null) {
+            security.checkAccess(this);
+        }
+    }
+    //是否持锁：obj为指定的监视器对象
+    public static native boolean holdsLock(Object obj);
+    //返回该线程的状态
+    public State getState() {
+        // get current thread state
+        return sun.misc.VM.toThreadState(threadStatus);
+    }
+    
+    
+    
+    //以下代码还不知道是干嘛的
+    private long           eetop;
+    private boolean     single_step;
+    private AccessControlContext inheritedAccessControlContext;
+    private static int threadInitNumber;
+    
+    private static synchronized int nextThreadNum() {
+        return threadInitNumber++;
+    }
+    private static long threadSeqNumber;
+    private static synchronized long nextThreadID() {
+        return ++threadSeqNumber;
+    }
+    private long nativeParkEventPointer;
+    private static final RuntimePermission SUBCLASS_IMPLEMENTATION_PERMISSION =
+            new RuntimePermission("enableContextClassLoaderOverride");
+
+
+    private static class Caches {
+        static final ConcurrentMap<WeakClassKey,Boolean> subclassAudits =
+            new ConcurrentHashMap<>();
+        static final ReferenceQueue<Class<?>> subclassAuditsQueue =
+            new ReferenceQueue<>();
+    }
+
+    private static boolean isCCLOverridden(Class<?> cl) {
+        if (cl == Thread.class)
+            return false;
+        processQueue(Caches.subclassAuditsQueue, Caches.subclassAudits);
+        WeakClassKey key = new WeakClassKey(cl, Caches.subclassAuditsQueue);
+        Boolean result = Caches.subclassAudits.get(key);
+        if (result == null) {
+            result = Boolean.valueOf(auditSubclass(cl));
+            Caches.subclassAudits.putIfAbsent(key, result);
+        }
+        return result.booleanValue();
+    }
+
+    private static boolean auditSubclass(final Class<?> subcl) {
+        Boolean result = AccessController.doPrivileged(
+            new PrivilegedAction<Boolean>() {
+                public Boolean run() {
+                    for (Class<?> cl = subcl;
+                         cl != Thread.class;
+                         cl = cl.getSuperclass())
+                    {
+                        try {
+                            cl.getDeclaredMethod("getContextClassLoader", new Class<?>[0]);
+                            return Boolean.TRUE;
+                        } catch (NoSuchMethodException ex) {
+                        }
+                        try {
+                            Class<?>[] params = {ClassLoader.class};
+                            cl.getDeclaredMethod("setContextClassLoader", params);
+                            return Boolean.TRUE;
+                        } catch (NoSuchMethodException ex) {
+                        }
+                    }
+                    return Boolean.FALSE;
+                }
+            }
+        );
+        return result.booleanValue();
+    } 
+
+    static void processQueue(ReferenceQueue<Class<?>> queue,ConcurrentMap<? extends WeakReference<Class<?>>, ?> map)
+    {
+        Reference<? extends Class<?>> ref;
+        while((ref = queue.poll()) != null) {
+            map.remove(ref);
+        }
+    }
+
+    static class WeakClassKey extends WeakReference<Class<?>> {
+
+        private final int hash;
+
+        WeakClassKey(Class<?> cl, ReferenceQueue<Class<?>> refQueue) {
+            super(cl, refQueue);
+            hash = System.identityHashCode(cl);
+        }
+        @Override
+        public int hashCode() {
+            return hash;
+        }
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == this)
+                return true;
+            if (obj instanceof WeakClassKey) {
+                Object referent = get();
+                return (referent != null) &&
+                       (referent == ((WeakClassKey) obj).get());
+            } else {
+                return false;
+            }
+        }
+    }
+    
+    /** The current seed for a ThreadLocalRandom */
+    @sun.misc.Contended("tlr")
+    long threadLocalRandomSeed;
+
+    /** Probe hash value; nonzero if threadLocalRandomSeed initialized */
+    @sun.misc.Contended("tlr")
+    int threadLocalRandomProbe;
+
+    /** Secondary seed isolated from public ThreadLocalRandom sequence */
+    @sun.misc.Contended("tlr")
+    int threadLocalRandomSecondarySeed;
 }
 ```
