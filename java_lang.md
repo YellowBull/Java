@@ -304,3 +304,183 @@ public final class String implements java.io.Serializable, Comparable<String>, C
 字符串拼接、修改使得字符数组长度改变,比如数组扩容需要创建新的更长的字符数组，由于String的字符数组value域是final的,其字符数组不允许扩容成新的长数组,所以一个字符串对象所表示的字符串就不能修改。<br>
 
 而字符构建器的字符数组引用不是final的,允许指向新的长数组。所以字符串拼接通常是利用字符构建器拼接成新的字符数组(当然会先到方法区常量池中找一下),再toString返回一个新的字符串,这也是编译器对字符串加操作的执行过程，原来的字符串引用指向上一步得到的新字符串。<br>
+```Java
+//给出了一系列的字符数组的操作方法用于字符串构建
+abstract class AbstractStringBuilder implements Appendable, CharSequence {
+
+	//存储字符串(可变的)
+    char[] value;
+    //记录存储了多少个字符
+    int count;
+   
+    //下面两方法用于判断数组扩容
+    public void ensureCapacity(int minimumCapacity) {
+        if (minimumCapacity > 0)
+            ensureCapacityInternal(minimumCapacity);
+    }
+    private void ensureCapacityInternal(int minimumCapacity) {
+        if (minimumCapacity - value.length > 0)
+            expandCapacity(minimumCapacity);
+    }
+    //数组扩容
+    void expandCapacity(int minimumCapacity) {
+    	//2倍+2
+        int newCapacity = value.length * 2 + 2;
+        if (newCapacity - minimumCapacity < 0)
+            newCapacity = minimumCapacity;
+        if (newCapacity < 0) {
+            if (minimumCapacity < 0)
+                throw new OutOfMemoryError();
+            newCapacity = Integer.MAX_VALUE;
+        }
+        //创建新数组
+        value = Arrays.copyOf(value, newCapacity);
+    }
+    //去掉数组尾部未使用的容量
+    public void trimToSize() {
+        if (count < value.length) {
+            value = Arrays.copyOf(value, count);
+        }
+    }
+    //强制增大count
+    //会触发数组扩容函数
+    //比原来count多出来的部分用null来初始化
+    public void setLength(int newLength) {
+        if (newLength < 0)
+            throw new StringIndexOutOfBoundsException(newLength);
+        ensureCapacityInternal(newLength);
+        //从count~newCount用null来初始化数组元素
+        if (count < newLength) {
+            Arrays.fill(value, count, newLength, '\0');
+        }
+        count = newLength;
+    }
+    //将字符数组value倒叙
+    public AbstractStringBuilder reverse() {
+        boolean hasSurrogates = false;
+        int n = count - 1;
+        for (int j = (n-1) >> 1; j >= 0; j--) {
+            int k = n - j;
+            char cj = value[j];
+            char ck = value[k];
+            value[j] = ck;
+            value[k] = cj;
+            if (Character.isSurrogate(cj) ||
+                Character.isSurrogate(ck)) {
+                hasSurrogates = true;
+            }
+        }
+        if (hasSurrogates) {
+            reverseAllValidSurrogatePairs();
+        }
+        return this;
+    }
+    //倒叙帮助方法
+    private void reverseAllValidSurrogatePairs() {
+        for (int i = 0; i < count - 1; i++) {
+            char c2 = value[i];
+            if (Character.isLowSurrogate(c2)) {
+                char c1 = value[i + 1];
+                if (Character.isHighSurrogate(c1)) {
+                    value[i++] = c1;
+                    value[i] = c2;
+                }
+            }
+        }
+    }
+    //将子字符数组复制到另外一个字符数组的dstBegin位置
+    public void getChars(int srcBegin, int srcEnd, char[] dst, int dstBegin)
+    {
+        if (srcBegin < 0)
+            throw new StringIndexOutOfBoundsException(srcBegin);
+        if ((srcEnd < 0) || (srcEnd > count))
+            throw new StringIndexOutOfBoundsException(srcEnd);
+        if (srcBegin > srcEnd)
+            throw new StringIndexOutOfBoundsException("srcBegin > srcEnd");
+        System.arraycopy(value, srcBegin, dst, dstBegin, srcEnd - srcBegin);
+    }
+    //指定下标范围的子字符数组,用另一个String替换
+    public AbstractStringBuilder replace(int start, int end, String str) {
+        if (start < 0)
+            throw new StringIndexOutOfBoundsException(start);
+        if (start > count)
+            throw new StringIndexOutOfBoundsException("start > length()");
+        if (start > end)
+            throw new StringIndexOutOfBoundsException("start > end");
+        if (end > count)
+            end = count;
+        int len = str.length();
+        int newCount = count + len - (end - start);
+        ensureCapacityInternal(newCount);
+        //end开始的后半部分后移,腾出空位
+        System.arraycopy(value, end, value, start + len, count - end);
+        //将str的字符数组复制到另一个字符数组value中,且第一个字符保存到value的start位置
+        //其实就是将str的字符数组填充到value在上一步腾出的空位上
+        str.getChars(value, start);
+        count = newCount;
+        return this;
+    }
+    //获得指定下标范围的子字符数组
+    @Override
+    public CharSequence subSequence(int start, int end) {
+        return substring(start, end);
+    }
+    public String substring(int start) {
+        return substring(start, count);
+    }
+    public String substring(int start, int end) {
+        if (start < 0)
+            throw new StringIndexOutOfBoundsException(start);
+        if (end > count)
+            throw new StringIndexOutOfBoundsException(end);
+        if (start > end)
+            throw new StringIndexOutOfBoundsException(end - start);
+        return new String(value, start, end - start);
+    } 
+    //删除指定下标范围的子数组
+    public AbstractStringBuilder delete(int start, int end) {
+        if (start < 0)
+            throw new StringIndexOutOfBoundsException(start);
+        if (end > count)
+            end = count;
+        if (start > end)
+            throw new StringIndexOutOfBoundsException();
+        int len = end - start;
+        if (len > 0) {
+        	//删除,后半部分前移
+            System.arraycopy(value, start+len, value, start, count-end);
+            count -= len;
+        }
+        return this;
+    }   
+    //下面是一系列字符串拼接,
+    //提供多种重载,但是底层还是操作其字符数组,实现方式比较简单,其他省略
+    public AbstractStringBuilder append(StringBuffer sb) {
+        if (sb == null)
+            return appendNull();
+        int len = sb.length();
+        ensureCapacityInternal(count + len);
+        sb.getChars(0, len, value, count);
+        count += len;
+        return this;
+    }
+    //下面是一系列的插入子字符数组的方法
+    //提供多种重载,但是底层还是操作其字符数组,实现方式比较简单,其他省略
+    public AbstractStringBuilder insert(int index, char[] str, int offset,
+                                        int len)
+    {
+        if ((index < 0) || (index > length()))
+            throw new StringIndexOutOfBoundsException(index);
+        if ((offset < 0) || (len < 0) || (offset > str.length - len))
+            throw new StringIndexOutOfBoundsException(
+                "offset " + offset + ", len " + len + ", str.length "
+                + str.length);
+        ensureCapacityInternal(count + len);
+        System.arraycopy(value, index, value, index + len, count - index);
+        System.arraycopy(str, offset, value, index, len);
+        count += len;
+        return this;
+    }
+    //下面是子字符数组下标获取相关方法,实现比较简单,省略
+}
+```
