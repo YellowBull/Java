@@ -848,7 +848,8 @@ public class Thread implements Runnable {
     private ClassLoader contextClassLoader;
     //断阻塞器：当线程发生IO中断时，需要在线程被设置为中断状态后调用该对象的interrupt方法
     volatile Object parkBlocker;   
-    //阻塞器对象,如果线程使用LockSupport的park进行挂起(而不是wait挂起)这个对象用来表示挂起原因,一般用来dump文件在出问题时方便分析
+    //阻塞器对象,如果线程使用LockSupport的park进行挂起(而不是wait挂起)
+    //这个对象用来表示挂起原因,一般用来dump文件在出问题时方便分析
     private volatile Interruptible blocker;    
     //interrupt()使用它做锁对象
     private final Object blockerLock = new Object();    
@@ -879,7 +880,8 @@ public class Thread implements Runnable {
     //构造器
     //利用init()进行一系列重载,这里省略
     public Thread(ThreadGroup group, Runnable target, String name,long stackSize) {
-    	// 分配新的 Thread 对象，以便将 target 作为其运行对象，将指定的 name 作为其名称，作为 group 所引用的线程组的一员，并具有指定的堆栈大小。
+    	// 分配新的 Thread 对象，以便将 target 作为其运行对象，将指定的 name 作为其名称
+    	// 作为 group 所引用的线程组的一员，并具有指定的堆栈大小。
         init(group, target, name, stackSize);
     }
     //init
