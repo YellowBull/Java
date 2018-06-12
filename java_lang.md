@@ -26,7 +26,7 @@ Object 类比较简单，大部分基本方法是native方法<br>
 
 需要注意的是以下几点:<br>
 equals默认以'=='的方式来判断（'=='是值的比较，但是equals方法可以被重写）<br>
-getClass<T>返回的是运行时的Class对象<br>
+getClass\<T\>返回的是运行时的Class对象<br>
 wait()不释放锁切抛出interruptedException<br>
 notify()唤醒以本对象为锁且等待中的线程(仅让他加入竞争池)<br>
 clone()默认仅浅拷贝且调用时检查是否实现Cloneable接口<br>
