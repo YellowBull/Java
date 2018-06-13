@@ -1550,3 +1550,1167 @@ public class ThreadLocal<T> {
     }
 }
 ```
+<hr/>
+
+## Enum 枚举类
+
+枚举类特点：<br/>
+
+枚举可以实现接口<br/>
+包含成员变量和方法<br/>
+默认继承 java.lang.Enum 类所以不能继承其他父类<br/>
+默认使用 final 修饰<br/>
+因此不能派生子类<br/>
+枚举类所有枚举对象必须在第一行给出，默认添加 public static final 修饰<br/>
+values()返回枚举值的数组，valueOf返回枚举类中指定name的枚举值<br/>
+jdk1.5后支持switch和case<br/>
+
+```Java
+enum Gender {
+    MALE("男"){
+        @Override
+        public void info() {
+            // TODO Auto-generated method stub            
+        }
+        
+    },FEMALE("女"){
+        @Override
+        public void info() {
+            // TODO Auto-generated method stub          
+        }       
+    };
+    private final String name;
+    private Gender(String name) {
+        this.name = name;
+    }   
+    public String getName() {
+        return this.name;
+    }
+    //抽象方法
+    public abstract void info();
+
+}
+```
+
+Enum是所有枚举类的超类，包含name和ordinal两个成员<br/>
+```Java
+public abstract class Enum<E extends Enum<E>> implements Comparable<E>, Serializable ,Cloneable{
+
+	//对象名
+    private final String name;
+    public final String name() {
+        return name;
+    }
+    //下标(从0开始按照申明顺序排序)
+    private final int ordinal;
+    public final int ordinal() {
+        return ordinal;
+    }
+    //构造器(用户不能自己调用,会编译失败)
+    protected Enum(String name, int ordinal) {
+        this.name = name;
+        this.ordinal = ordinal;
+    }
+    //toString
+    public String toString() {
+        return name;
+    }
+    //equals
+    public final boolean equals(Object other) {
+    	//使用==判断地址
+        return this==other;
+    }
+    //hashCode
+    public final int hashCode() {
+        return super.hashCode();
+    }
+    //clone
+    protected final Object clone() throws CloneNotSupportedException {
+    	//并没有克隆相关逻辑,直接抛出异常
+        throw new CloneNotSupportedException();
+    }
+    //compareTo
+    public final int compareTo(E o) {
+        Enum<?> other = (Enum<?>)o;
+        Enum<E> self = this;
+        if (self.getClass() != other.getClass() && self.getDeclaringClass() != other.getDeclaringClass())
+            throw new ClassCastException();
+        //返回下标差值
+        return self.ordinal - other.ordinal;
+    }
+    //返回申明的枚举类
+    @SuppressWarnings("unchecked")
+    public final Class<E> getDeclaringClass() {
+    	//enum关键字申明的枚举类对象的Class对象
+        Class<?> clazz = getClass();
+        //超类Enum
+        Class<?> zuper = clazz.getSuperclass();
+        return (zuper == Enum.class) ? (Class<E>)clazz : (Class<E>)zuper;
+    } 
+    //返回枚举类中指定name的枚举值
+    public static <T extends Enum<T>> T valueOf(Class<T> enumType,String name) {
+        T result = enumType.enumConstantDirectory().get(name);
+        if (result != null)
+            return result;
+        if (name == null)
+            throw new NullPointerException("Name is null");
+        throw new IllegalArgumentException(
+            "No enum constant " + enumType.getCanonicalName() + "." + name);
+    }   
+    
+    
+    protected final void finalize() { }
+    private void readObject(ObjectInputStream in) throws IOException,
+        ClassNotFoundException {
+        throw new InvalidObjectException("can't deserialize enum");
+    }
+    private void readObjectNoData() throws ObjectStreamException {
+        throw new InvalidObjectException("can't deserialize enum");
+    }
+}
+```
+<hr/>
+
+## Throwable 类
+StackTraceElement是一个工具类，封装了被调用方法的申明类、方法名称、行数等等<br/>
+```Java
+public final class StackTraceElement implements java.io.Serializable {
+
+	//方法所在申明类
+    private String declaringClass;
+    //方法名称
+    private String methodName;
+    //文件名称
+    private String fileName;
+    //行数
+    private int    lineNumber;
+    //一系列成员get方法
+
+    //构造器
+    public StackTraceElement(String declaringClass, String methodName,String fileName, int lineNumber) {
+        this.declaringClass = Objects.requireNonNull(declaringClass, "Declaring class is null");
+        this.methodName     = Objects.requireNonNull(methodName, "Method name is null");
+        this.fileName       = fileName;
+        this.lineNumber     = lineNumber;
+    }
+    
+    //打印成员信息
+    public String toString() {
+        return getClassName() + "." + methodName +
+            (isNativeMethod() ? "(Native Method)" :
+             (fileName != null && lineNumber >= 0 ?
+              "(" + fileName + ":" + lineNumber + ")" :
+              (fileName != null ?  "("+fileName+")" : "(Unknown Source)")));
+    }
+    //equals
+    public boolean equals(Object obj) {
+        if (obj==this)
+            return true;
+        if (!(obj instanceof StackTraceElement))
+            return false;
+        StackTraceElement e = (StackTraceElement)obj;
+        //短路与方式比较上诉所有成员
+        return e.declaringClass.equals(declaringClass) &&
+            e.lineNumber == lineNumber &&
+            Objects.equals(methodName, e.methodName) &&
+            Objects.equals(fileName, e.fileName);
+    }
+    public int hashCode() {
+        int result = 31*declaringClass.hashCode() + methodName.hashCode();
+        result = 31*result + Objects.hashCode(fileName);
+        result = 31*result + lineNumber;
+        return result;
+    }
+    private static final long serialVersionUID = 6992337162326171013L;
+}
+```
+
+给出该类的一个测试类，帮助理解Throwable中StackTraceElement数组的使用<br/>
+
+```Java
+public class test {
+  
+    //方法A
+    private void methodA() {  
+        //调用B
+        methodB();  
+    }  
+  
+    //方法B
+    private void methodB() {   
+        //调用C
+        methodC();
+    }  
+    //方法C
+    private void methodC() {     
+        //回溯此方法调用链,输出相关信息
+        StackTraceElement elements[] = Thread.currentThread().getStackTrace();  
+        for (int i = 0; i < elements.length; i++) {  
+            System.out.print("类名："+elements[i].getClassName()+" ");  
+            System.out.print("方法名："+elements[i].getMethodName()+" ");  
+            System.out.print("文件名："+elements[i].getFileName()+" ");  
+            System.out.print("行数："+elements[i].getLineNumber()+" ");  
+            System.out.println("Class对象："+elements[i].getClass()+" ");
+        }  
+    }  
+    
+    //测试
+    public static void main(String[] args) {  
+        new test().methodA(); 
+        //结果：
+        //类名：java.lang.Thread 方法名：getStackTrace 文件名：null 行数：-1 Class对象：class java.lang.StackTraceElement 
+        //类名：com.tyf.www.test 方法名：methodC 文件名：test.java 行数：23 Class对象：class java.lang.StackTraceElement 
+        //类名：com.tyf.www.test 方法名：methodB 文件名：test.java 行数：18 Class对象：class java.lang.StackTraceElement 
+        //类名：com.tyf.www.test 方法名：methodA 文件名：test.java 行数：12 Class对象：class java.lang.StackTraceElement 
+        //类名：com.tyf.www.test 方法名：main 文件名：test.java 行数：6 Class对象：class java.lang.StackTraceElement
+    }  
+}
+```
+
+Throwable 是所有异常的顶层父类，最重要的成员是StackTrace，他是一个StackTraceElement数组，用来保存方法调用栈。重要的方法就是打印异常信息等一系列方法它们都是通过上面数组实现的。一般我们使用异常都是自定义异常，无非就是重写异常名称、异常信息等等相关方法。<br/>
+
+```Java
+public class Throwable implements Serializable {
+
+    private transient Object backtrace;
+
+    //存放异常详细信息
+    private String detailMessage;
+
+    //哨兵提供
+    private static class SentinelHolder {
+        public static final StackTraceElement STACK_TRACE_ELEMENT_SENTINEL =
+            new StackTraceElement("", "", null, Integer.MIN_VALUE);
+        public static final StackTraceElement[] STACK_TRACE_SENTINEL =
+            new StackTraceElement[] {STACK_TRACE_ELEMENT_SENTINEL};
+    }
+
+    //异常原因
+    private Throwable cause = this;
+
+    //方法调用栈
+    private StackTraceElement[] stackTrace = UNASSIGNED_STACK;//StackTraceElement封装了被调用方法的申明类、方法名称、文件名称、报错行数
+    private static final StackTraceElement[] UNASSIGNED_STACK = new StackTraceElement[0];
+
+    //存放try中的异常对象
+    private List<Throwable> suppressedExceptions = SUPPRESSED_SENTINEL;
+    private static final List<Throwable> SUPPRESSED_SENTINEL = Collections.unmodifiableList(new ArrayList<Throwable>(0));
+
+    //通用字符串
+    private static final String NULL_CAUSE_MESSAGE = "Cannot suppress a null exception.";
+    private static final String SELF_SUPPRESSION_MESSAGE = "Self-suppression not permitted";
+    private static final String CAUSE_CAPTION = "Caused by: ";
+    private static final String SUPPRESSED_CAPTION = "Suppressed: ";
+
+    //构造器
+    public Throwable() {
+        fillInStackTrace();
+    }
+    public Throwable(String message) {
+        fillInStackTrace();
+        detailMessage = message;
+    }
+    public Throwable(String message, Throwable cause) {
+        fillInStackTrace();
+        detailMessage = message;
+        this.cause = cause;
+    }
+    public Throwable(Throwable cause) {
+        fillInStackTrace();
+        detailMessage = (cause==null ? null : cause.toString());
+        this.cause = cause;
+    }
+    protected Throwable(String message, Throwable cause,
+                        boolean enableSuppression,
+                        boolean writableStackTrace) {
+        if (writableStackTrace) {
+            fillInStackTrace();
+        } else {
+            stackTrace = null;
+        }
+        detailMessage = message;
+        this.cause = cause;
+        if (!enableSuppression)
+            suppressedExceptions = null;
+    }
+
+    //返回详细异常信息
+    public String getMessage() {
+        return detailMessage;
+    }
+
+    //返回详细异常信息
+    public String getLocalizedMessage() {
+        return getMessage();
+    }
+
+    //返回异常的引用
+    public synchronized Throwable getCause() {
+        return (cause==this ? null : cause);
+    }
+
+    //异常初始化
+    public synchronized Throwable initCause(Throwable cause) {
+    	//异常不是默认值,说明已经初始化过,也说明异常只能初始化一次
+        if (this.cause != this)
+            throw new IllegalStateException("Can't overwrite cause with " +
+                                            Objects.toString(cause, "a null"), this);
+        //若使用自己来初始化cause域,直接抛出方法参数不合法异常
+        if (cause == this)
+            throw new IllegalArgumentException("Self-causation not permitted", this);
+        this.cause = cause;
+        return this;
+    }
+
+    //打印异常栈
+    public void printStackTrace(PrintWriter s) {
+        printStackTrace(new WrappedPrintWriter(s));
+    }
+    public void printStackTrace() {
+        printStackTrace(System.err);
+    }
+    public void printStackTrace(PrintStream s) {
+        printStackTrace(new WrappedPrintStream(s));
+    }
+    private void printStackTrace(PrintStreamOrWriter s) {
+        Set<Throwable> dejaVu =Collections.newSetFromMap(new IdentityHashMap<Throwable, Boolean>());
+        dejaVu.add(this);
+        //同步
+        synchronized (s.lock()) {
+            s.println(this);
+            StackTraceElement[] trace = getOurStackTrace();
+            //遍历方法调用栈,打印方法调用链
+            for (StackTraceElement traceElement : trace)
+                s.println("\tat " + traceElement);
+            //
+            for (Throwable se : getSuppressed())
+                se.printEnclosedStackTrace(s, trace, SUPPRESSED_CAPTION, "\t", dejaVu);
+            Throwable ourCause = getCause();
+            if (ourCause != null)
+                ourCause.printEnclosedStackTrace(s, trace, CAUSE_CAPTION, "", dejaVu);
+        }
+    }
+    private void printEnclosedStackTrace(PrintStreamOrWriter s,
+                                         StackTraceElement[] enclosingTrace,
+                                         String caption,
+                                         String prefix,
+                                         Set<Throwable> dejaVu) {
+        assert Thread.holdsLock(s.lock());
+        if (dejaVu.contains(this)) {
+            s.println("\t[CIRCULAR REFERENCE:" + this + "]");
+        } else {
+            dejaVu.add(this);
+            StackTraceElement[] trace = getOurStackTrace();
+            int m = trace.length - 1;
+            int n = enclosingTrace.length - 1;
+            while (m >= 0 && n >=0 && trace[m].equals(enclosingTrace[n])) {
+                m--; n--;
+            }
+            int framesInCommon = trace.length - 1 - m;
+            //打印异常栈
+            s.println(prefix + caption + this);
+            for (int i = 0; i <= m; i++)
+                s.println(prefix + "\tat " + trace[i]);
+            if (framesInCommon != 0)
+                s.println(prefix + "\t... " + framesInCommon + " more");
+            //打印trt中异常对象
+            for (Throwable se : getSuppressed())
+                se.printEnclosedStackTrace(s, trace, SUPPRESSED_CAPTION,
+                                           prefix +"\t", dejaVu);
+            //打印异常原因
+            Throwable ourCause = getCause();
+            if (ourCause != null)
+            	//递归
+                ourCause.printEnclosedStackTrace(s, trace, CAUSE_CAPTION, prefix, dejaVu);
+        }
+    }
+
+    //记录异常栈
+    public synchronized Throwable fillInStackTrace() {
+        if (stackTrace != null ||
+            backtrace != null /* Out of protocol state */ ) {
+            fillInStackTrace(0);
+            stackTrace = UNASSIGNED_STACK;
+        }
+        return this;
+    }
+    private native Throwable fillInStackTrace(int dummy);//这里调用native,记录调用链
+
+    //返回方法栈
+    public StackTraceElement[] getStackTrace() {
+        return getOurStackTrace().clone();
+    }
+    private synchronized StackTraceElement[] getOurStackTrace() {
+        if (stackTrace == UNASSIGNED_STACK ||
+            (stackTrace == null && backtrace != null)) {
+            int depth = getStackTraceDepth();
+            stackTrace = new StackTraceElement[depth];
+            for (int i=0; i < depth; i++)
+                stackTrace[i] = getStackTraceElement(i);
+        } else if (stackTrace == null) {
+            return UNASSIGNED_STACK;
+        }
+        return stackTrace;
+    }
+    //添加方法栈
+    public void setStackTrace(StackTraceElement[] stackTrace) {
+        StackTraceElement[] defensiveCopy = stackTrace.clone();
+        for (int i = 0; i < defensiveCopy.length; i++) {
+            if (defensiveCopy[i] == null)
+                throw new NullPointerException("stackTrace[" + i + "]");
+        }
+        synchronized (this) {
+            if (this.stackTrace == null && backtrace == null) 
+                return;
+            this.stackTrace = defensiveCopy;
+        }
+    }
+
+    //返回异常深度
+    native int getStackTraceDepth();
+
+    //返回指定层的异常
+    native StackTraceElement getStackTraceElement(int index);
+
+    //搜集try中的异常对象
+    public final synchronized void addSuppressed(Throwable exception) {
+        if (exception == this)
+            throw new IllegalArgumentException(SELF_SUPPRESSION_MESSAGE, exception);
+        if (exception == null)
+            throw new NullPointerException(NULL_CAUSE_MESSAGE);
+        if (suppressedExceptions == null) 
+            return;
+        if (suppressedExceptions == SUPPRESSED_SENTINEL)
+            suppressedExceptions = new ArrayList<>(1);
+        //添加
+        suppressedExceptions.add(exception);
+    }
+
+    private static final Throwable[] EMPTY_THROWABLE_ARRAY = new Throwable[0];
+
+    //返回try中的所有异常对象
+    public final synchronized Throwable[] getSuppressed() {
+        if (suppressedExceptions == SUPPRESSED_SENTINEL ||suppressedExceptions == null)
+            return EMPTY_THROWABLE_ARRAY;
+        else
+            return suppressedExceptions.toArray(EMPTY_THROWABLE_ARRAY);
+    } 
+    
+    //读写对象
+    private void readObject(ObjectInputStream s)
+            throws IOException, ClassNotFoundException {
+            s.defaultReadObject();
+            if (suppressedExceptions != null) {
+                List<Throwable> suppressed = null;
+                if (suppressedExceptions.isEmpty()) {
+                    suppressed = SUPPRESSED_SENTINEL;
+                } else {
+                    suppressed = new ArrayList<>(1);
+                    for (Throwable t : suppressedExceptions) {
+                        if (t == null)
+                            throw new NullPointerException(NULL_CAUSE_MESSAGE);
+                        if (t == this)
+                            throw new IllegalArgumentException(SELF_SUPPRESSION_MESSAGE);
+                        suppressed.add(t);
+                    }
+                }
+                suppressedExceptions = suppressed;
+            } 
+            if (stackTrace != null) {
+                if (stackTrace.length == 0) {
+                    stackTrace = UNASSIGNED_STACK.clone();
+                }  else if (stackTrace.length == 1 &&
+                            SentinelHolder.STACK_TRACE_ELEMENT_SENTINEL.equals(stackTrace[0])) {
+                    stackTrace = null;
+                } else {
+                    for(StackTraceElement ste : stackTrace) {
+                        if (ste == null)
+                            throw new NullPointerException("null StackTraceElement in serial stream. ");
+                    }
+                }
+            } else {
+                stackTrace = UNASSIGNED_STACK.clone();
+            }
+        }
+        private synchronized void writeObject(ObjectOutputStream s)
+            throws IOException {
+            getOurStackTrace();
+            StackTraceElement[] oldStackTrace = stackTrace;
+            try {
+                if (stackTrace == null)
+                    stackTrace = SentinelHolder.STACK_TRACE_SENTINEL;
+                s.defaultWriteObject();
+            } finally {
+                stackTrace = oldStackTrace;
+            }
+        }
+    
+        //输出流成员内部类
+        private abstract static class PrintStreamOrWriter {
+            abstract Object lock();
+            abstract void println(Object o);
+        }
+        private static class WrappedPrintStream extends PrintStreamOrWriter {
+            private final PrintStream printStream;
+            WrappedPrintStream(PrintStream printStream) {
+                this.printStream = printStream;
+            }
+            Object lock() {
+                return printStream;
+            }
+            void println(Object o) {
+                printStream.println(o);
+            }
+        }
+        private static class WrappedPrintWriter extends PrintStreamOrWriter {
+            private final PrintWriter printWriter;
+
+            WrappedPrintWriter(PrintWriter printWriter) {
+                this.printWriter = printWriter;
+            }
+            Object lock() {
+                return printWriter;
+            }
+            void println(Object o) {
+                printWriter.println(o);
+            }
+        }
+}
+```
+<hr/>
+
+## Error和Exception 类
+
+Error ：系统错误，不应该被捕获而是直接停止应用程序。<br/>
+
+Exception ：jdk已经为我们实现了完善的一系列子类，从它继承而来的所有异常均可以catch可以错误恢复。<br/>
+包含运行时异常(不用捕获，方法也不用throws来申明)，受检异常(需要显示catch，方法必须用throws来申明)。<br/>
+
+这两个类均继承自Throwable。均只是重写了四个构造器，代码短短30行不到。<br/>
+```Java
+//Error
+public class Error extends Throwable {
+    static final long serialVersionUID = 4980196508277280342L;
+    //构造器
+    public Error() {
+        super();
+    }
+    public Error(String message) {
+        super(message);
+    }
+    public Error(String message, Throwable cause) {
+        super(message, cause);
+    }
+    public Error(Throwable cause) {
+        super(cause);
+    }
+    protected Error(String message, Throwable cause,
+                    boolean enableSuppression,
+                    boolean writableStackTrace) {
+        super(message, cause, enableSuppression, writableStackTrace);
+    }
+}
+
+//Exception
+public class Exception extends Throwable {
+    static final long serialVersionUID = -3387516993124229948L;
+    //构造器
+    public Exception() {
+        super();
+    }
+    public Exception(String message) {
+        super(message);
+    }
+    public Exception(String message, Throwable cause) {
+        super(message, cause);
+    }
+    public Exception(Throwable cause) {
+        super(cause);
+    }
+    protected Exception(String message, Throwable cause,
+                        boolean enableSuppression,
+                        boolean writableStackTrace) {
+        super(message, cause, enableSuppression, writableStackTrace);
+    }
+}
+```
+
+jdk已经实现的Exception子类，分为运行时异常和受检查异常<br/>
+
+```Java
+//运行时异常(非受检异常)：无需捕获和抛出
+Java.lang.ArithmeticException
+Java.lang.ArrayStoreExcetpion
+Java.lang.ClassCastException
+Java.lang.EnumConstantNotPresentException
+Java.lang.IllegalArgumentException
+Java.lang.IllegalThreadStateException
+Java.lang.NumberFormatException
+Java.lang.IllegalMonitorStateException
+Java.lang.IllegalStateException
+Java.lang.IndexOutOfBoundsException
+Java.lang.ArrayIndexOutOfBoundsException
+Java.lang.StringIndexOutOfBoundsException
+Java.lang.NegativeArraySizeException’
+Java.lang.NullPointerException
+Java.lang.SecurityException
+Java.lang.TypeNotPresentException
+Java.lang.UnsupprotedOperationException
+//受检异常：需要显式catch和throws抛出
+Java.lang.ClassNotFoundException
+Java.lang.CloneNotSupportedException
+Java.lang.IllegalAccessException
+Java.lang.InterruptedException
+Java.lang.NoSuchFieldException
+Java.lang.NoSuchMetodException
+```
+<hr/>
+
+## Class 类
+我们申明的所有的类都有一些共同点：有一系列成员方法、属性、构造器、直接实现多个接口、直接继承某个父类、泛型的参数化类型信息、注解、全路径等等。我们把所有信息都封装到一个Class类中，我们申明的所有类都有一个Class类对象用来描述该类的上述所有信息。Class类文件源码很长，这里分析部分常用方法。<br/>
+Class类申明:<br/>
+
+```Java
+public final class Class<T> implements java.io.Serializable,GenericDeclaration,Type,AnnotatedElement {
+	//GenericDeclaration接口：获取泛型申明
+	//Type：一个空接口,用于表示所有类型(原始类型、泛型参数化类型、数组等)
+	//AnnotatedElement：提供方法用于反射地读取注释信息
+}
+```
+
+包含私有构造器，仅由jvm调用:<br/>
+
+```Java
+//构造器  
+//私有,不允许客户端调用  
+private Class(ClassLoader loader) {  
+    classLoader = loader;  
+} 
+```
+
+常用的基本方法，大部分封装native方法:<br/>
+
+```Java
+    //强制转换为本类一个指定子类的Class对象
+    public <U> Class<? extends U> asSubclass(Class<U> clazz) {
+        if (clazz.isAssignableFrom(this))
+            return (Class<? extends U>) this;
+        else
+            throw new ClassCastException(this.toString());
+    }
+    //将obj转为本类的实例
+    public T cast(Object obj) {
+        if (obj != null && !isInstance(obj))
+            throw new ClassCastException(cannotCastMsg(obj));
+        //这里直接使用了强制类型转换
+        return (T) obj;
+    }
+    //判断是否是本类实例
+    public native boolean isInstance(Object obj);
+    //判断是否是调用者同类型
+    public native boolean isAssignableFrom(Class<?> cls);
+    //判断本类是否是接口
+    public native boolean isInterface();
+    //判断本类是否是数组
+    public native boolean isArray();
+    //判断本类是否是基本类型
+    public native boolean isPrimitive();
+    //判断本类是否是注释类型
+    public boolean isAnnotation() {
+        return (getModifiers() & ANNOTATION) != 0;
+    }
+    //判断本类是否是合成类型
+    public boolean isSynthetic() {
+        return (getModifiers() & SYNTHETIC) != 0;
+    }
+    //获得本类的包路径
+    public Package getPackage() {
+        return Package.getPackage(this);
+    }
+    //全限定名(包+类)
+    private transient String name;
+    public String getName() {
+        String name = this.name;
+        if (name == null)
+            this.name = name = getName0();
+        return name;
+    }
+    private native String getName0();
+```
+
+反射相关的方法: <br/>
+
+```Java
+    //注解相关
+    @SuppressWarnings("unchecked")
+    public <A extends Annotation> A getAnnotation(Class<A> annotationClass) {
+        Objects.requireNonNull(annotationClass);
+        return (A) annotationData().annotations.get(annotationClass);
+    }
+    public Annotation[] getAnnotations() {
+        return AnnotationParser.toArray(annotationData().annotations);
+    }  
+    
+    //属性相关
+    public Field[] getFields() throws SecurityException {//返回本类所有公有属性
+        checkMemberAccess(Member.PUBLIC, Reflection.getCallerClass(), true);
+        return copyFields(privateGetPublicFields(null));
+    }
+    public Field getField(String name)
+            throws NoSuchFieldException, SecurityException {//返回本类指定名称的公有属性
+            checkMemberAccess(Member.PUBLIC, Reflection.getCallerClass(), true);
+            Field field = getField0(name);
+            if (field == null) {
+                throw new NoSuchFieldException(name);
+            }
+            return field;
+        } 
+    
+    //方法相关
+    public Method[] getMethods() throws SecurityException {//返回本类所有公有方法
+        checkMemberAccess(Member.PUBLIC, Reflection.getCallerClass(), true);
+        return copyMethods(privateGetPublicMethods());
+    }
+    public Method getMethod(String name, Class<?>... parameterTypes)
+    		throws NoSuchMethodException, SecurityException {//返回本类指定名称、参数的公有方法
+            checkMemberAccess(Member.PUBLIC, Reflection.getCallerClass(), true);
+            Method method = getMethod0(name, parameterTypes, true);
+            if (method == null) {
+                throw new NoSuchMethodException(getName() + "." + name + argumentTypesToString(parameterTypes));
+            }
+            return method;
+        }      
+       
+    //构造器相关
+    public Constructor<?>[] getConstructors() throws SecurityException {//返回本类所有公有构造器
+        checkMemberAccess(Member.PUBLIC, Reflection.getCallerClass(), true);
+        return copyConstructors(privateGetDeclaredConstructors(true));
+    }
+    public Constructor<T> getConstructor(Class<?>... parameterTypes)
+            throws NoSuchMethodException, SecurityException {//返回本类指定参数的公有构造器
+            checkMemberAccess(Member.PUBLIC, Reflection.getCallerClass(), true);
+            return getConstructor0(parameterTypes, Member.PUBLIC);
+        } 
+     
+    //接口相关
+    public Class<?>[] getInterfaces() {//获取本类直接实现的所有接口
+        ReflectionData<T> rd = reflectionData();
+        if (rd == null) {
+            return getInterfaces0();
+        } else {
+            Class<?>[] interfaces = rd.interfaces;
+            if (interfaces == null) {
+                interfaces = getInterfaces0();
+                rd.interfaces = interfaces;
+            }
+            return interfaces.clone();
+        }
+    }
+    private native Class<?>[] getInterfaces0(); 
+    public Type[] getGenericInterfaces() {//获取本类直接实现的所有接口,返回这些接口的类型数组
+        ClassRepository info = getGenericInfo();
+        return (info == null) ?  getInterfaces() : info.getSuperInterfaces();
+    }
+  
+    //返回本类申明的变量类型的数组
+    public TypeVariable<Class<T>>[] getTypeParameters() {
+        ClassRepository info = getGenericInfo();
+        if (info != null)
+            return (TypeVariable<Class<T>>[])info.getTypeParameters();
+        else
+            return (TypeVariable<Class<T>>[])new TypeVariable<?>[0];
+    }
+
+    //获得本类的直接父类的Class对象
+    public native Class<? super T> getSuperclass();
+
+    //获得本类的直接父类的Class对象(带参数化类型)
+    public Type getGenericSuperclass() {
+        ClassRepository info = getGenericInfo();
+        if (info == null) {
+            return getSuperclass();
+        }
+        if (isInterface()) {
+            return null;
+        }
+        return info.getSuperclass();
+    }
+
+    //如果本类是在某方法中定义的,返回这个方法对象
+    @CallerSensitive
+    public Method getEnclosingMethod() throws SecurityException {
+        EnclosingMethodInfo enclosingInfo = getEnclosingMethodInfo();
+        if (enclosingInfo == null)
+            return null;
+        else {
+            if (!enclosingInfo.isMethod())
+                return null;
+            MethodRepository typeInfo = MethodRepository.make(enclosingInfo.getDescriptor(),getFactory());
+            Class<?>   returnType       = toClass(typeInfo.getReturnType());
+            Type []    parameterTypes   = typeInfo.getParameterTypes();
+            Class<?>[] parameterClasses = new Class<?>[parameterTypes.length];
+            for(int i = 0; i < parameterClasses.length; i++)
+                parameterClasses[i] = toClass(parameterTypes[i]);
+            Class<?> enclosingCandidate = enclosingInfo.getEnclosingClass();
+            enclosingCandidate.checkMemberAccess(Member.DECLARED,
+                                                 Reflection.getCallerClass(), true);
+            for(Method m: enclosingCandidate.getDeclaredMethods()) {
+                if (m.getName().equals(enclosingInfo.getName()) ) {
+                    Class<?>[] candidateParamClasses = m.getParameterTypes();
+                    if (candidateParamClasses.length == parameterClasses.length) {
+                        boolean matches = true;
+                        for(int i = 0; i < candidateParamClasses.length; i++) {
+                            if (!candidateParamClasses[i].equals(parameterClasses[i])) {
+                                matches = false;
+                                break;
+                            }
+                        }
+                        if (matches) { 
+                            if (m.getReturnType().equals(returnType) )
+                                return m;
+                        }
+                    }
+                }
+            }
+            throw new InternalError("Enclosing method not found");
+        }
+    }
+    private native Object[] getEnclosingMethod0();
+    private EnclosingMethodInfo getEnclosingMethodInfo() {
+        Object[] enclosingInfo = getEnclosingMethod0();
+        if (enclosingInfo == null)
+            return null;
+        else {
+            return new EnclosingMethodInfo(enclosingInfo);
+        }
+    }
+    //如果是在方法中定义本类,封装这个放的相关信息到一个成员内部类中
+    private final static class EnclosingMethodInfo {
+        private Class<?> enclosingClass;
+        private String name;
+        private String descriptor;
+        private EnclosingMethodInfo(Object[] enclosingInfo) {
+            if (enclosingInfo.length != 3)
+                throw new InternalError("Malformed enclosing method information");
+            try {
+                enclosingClass = (Class<?>) enclosingInfo[0];
+                assert(enclosingClass != null);
+                name            = (String)   enclosingInfo[1];
+                descriptor      = (String)   enclosingInfo[2];
+                assert((name != null && descriptor != null) || name == descriptor);
+            } catch (ClassCastException cce) {
+                throw new InternalError("Invalid type in enclosing method information", cce);
+            }
+        }
+        boolean isPartial() {
+            return enclosingClass == null || name == null || descriptor == null;
+        }
+        boolean isConstructor() { return !isPartial() && "<init>".equals(name); }
+        boolean isMethod() { return !isPartial() && !isConstructor() && !"<clinit>".equals(name); }
+        Class<?> getEnclosingClass() { return enclosingClass; }
+        String getName() { return name; }
+        String getDescriptor() { return descriptor; }
+    }
+
+    private static Class<?> toClass(Type o) {
+        if (o instanceof GenericArrayType)
+            return Array.newInstance(toClass(((GenericArrayType)o).getGenericComponentType()),0)
+                .getClass();
+        return (Class<?>)o;
+     } 
+    
+    //如果本来是在某构造器中定义的,返回这个构造器对象
+    @CallerSensitive
+    public Constructor<?> getEnclosingConstructor() throws SecurityException {
+        EnclosingMethodInfo enclosingInfo = getEnclosingMethodInfo();
+
+        if (enclosingInfo == null)
+            return null;
+        else {
+            if (!enclosingInfo.isConstructor())
+                return null;
+            ConstructorRepository typeInfo = ConstructorRepository.make(enclosingInfo.getDescriptor(),
+                                                                       getFactory());
+            Type []    parameterTypes   = typeInfo.getParameterTypes();
+            Class<?>[] parameterClasses = new Class<?>[parameterTypes.length];
+            for(int i = 0; i < parameterClasses.length; i++)
+                parameterClasses[i] = toClass(parameterTypes[i]);
+            Class<?> enclosingCandidate = enclosingInfo.getEnclosingClass();
+            enclosingCandidate.checkMemberAccess(Member.DECLARED,
+                                                 Reflection.getCallerClass(), true);
+            for(Constructor<?> c: enclosingCandidate.getDeclaredConstructors()) {
+                Class<?>[] candidateParamClasses = c.getParameterTypes();
+                if (candidateParamClasses.length == parameterClasses.length) {
+                    boolean matches = true;
+                    for(int i = 0; i < candidateParamClasses.length; i++) {
+                        if (!candidateParamClasses[i].equals(parameterClasses[i])) {
+                            matches = false;
+                            break;
+                        }
+                    }
+                    if (matches)
+                        return c;
+                }
+            }
+            throw new InternalError("Enclosing constructor not found");
+        }
+    }
+    
+    //如果本类是在另外一个类中定义的,返回外层类的Class对象
+    @CallerSensitive
+    public Class<?> getDeclaringClass() throws SecurityException {
+        final Class<?> candidate = getDeclaringClass0();
+
+        if (candidate != null)
+            candidate.checkPackageAccess(
+                    ClassLoader.getClassLoader(Reflection.getCallerClass()), true);
+        return candidate;
+    }
+    private native Class<?> getDeclaringClass0();
+    
+    //如果本类是在另外一个类中定义的,返回外层类的Class对象
+    @CallerSensitive
+    public Class<?> getEnclosingClass() throws SecurityException {
+        EnclosingMethodInfo enclosingInfo = getEnclosingMethodInfo();
+        Class<?> enclosingCandidate;
+        if (enclosingInfo == null) {
+            enclosingCandidate = getDeclaringClass();
+        } else {
+            Class<?> enclosingClass = enclosingInfo.getEnclosingClass();
+            if (enclosingClass == this || enclosingClass == null)
+                throw new InternalError("Malformed enclosing method information");
+            else
+                enclosingCandidate = enclosingClass;
+        }
+        if (enclosingCandidate != null)
+            enclosingCandidate.checkPackageAccess(
+                    ClassLoader.getClassLoader(Reflection.getCallerClass()), true);
+        return enclosingCandidate;
+    }
+```
+<hr/>
+
+## ClassLoader 类
+类加载器用于将.java编译后的.class文件加载到jvm。当请求查找类或资源时， ClassLoader实例将在尝试查找类或资源本身之前将类或资源的搜索任务委托给其父类加载器。 虚拟机的内置类加载器Bootstrap (称为“引导类加载器”)本身不具有父级，但可以作为ClassLoader实例的顶层父级。 继承关系图如下：<br/>
+![](https://img-blog.csdn.net/20180424151403633) <br/>
+Bootstrap ClassLoader：<br/>
+加载核心类库，路径为“%JRE_HOME%\lib”。包括rt.jar、resources.jar、charsets.jar和class等。这个类是C/C++写的，本身属于jvm的一部分。<br/>
+
+Extention ClassLoader：<br/>
+加载扩展类，路径为“%JRE_HOME%\lib\ext”。<br/>
+
+Appclass Loader：<br/>
+当前应用的classpath的类。<br/>
+
+类加载过程：<br/>
+加载、验证、准备、解析、初始化、使用、卸载。其中解析可以在初始化之后再进行用于支持java的运行时绑定的特性。<br/>
+
+双亲委托防止重复加载：<br/>
+当前ClassLoader首先从自己已经加载的类中查询是否此类已经加载，如果已经加载则直接返回原来已经加载的类。 <br/>
+当前classLoader的缓存中没有找到被加载的类的时候，委托父类加载器去加载，父类加载器采用同样的策略，首先查看自己的缓存，然后委托父类的父类去加载，一直到bootstrp ClassLoader。<br/>
+当所有的父类加载器都没有加载的时候，再由当前的类加载器加载，并将其放入它自己的缓存中，以便下次有加载请求的时候直接返回。<br/>
+
+类加载器工作实质是把编译后的类文件从硬盘加载到内存中，ClassLoader是一个顶层抽象类<br/>
+
+```Java
+  //构造器
+    private ClassLoader(Void unused, ClassLoader parent) {
+    	//这个是父加载器,以实现双亲委托
+        this.parent = parent;
+        if (ParallelLoaders.isRegistered(this.getClass())) {
+            parallelLockMap = new ConcurrentHashMap<>();
+            package2certs = new ConcurrentHashMap<>();
+            domains =Collections.synchronizedSet(new HashSet<ProtectionDomain>());
+            assertionLock = new Object();
+        } else {
+            // no finer-grained lock; lock on the classloader instance
+            parallelLockMap = null;
+            package2certs = new Hashtable<>();
+            domains = new HashSet<>();
+            assertionLock = this;
+        }
+    }
+    protected ClassLoader(ClassLoader parent) {
+        this(checkCreateClassLoader(), parent);
+    }
+    protected ClassLoader() {
+        this(checkCreateClassLoader(), getSystemClassLoader());
+    }
+```
+
+接下来loadClass方法实现类加载，同时依托相关方法实现双亲委托，源码还是比较清晰的。值得注意的是loadClass用于类加载，在所有父加载器的缓存中均找不到这个类，且顶层的Bootstrap加载失败(加载成功返回该类Class对象，失败返回null)之后，会调用findClass方法(默认抛出异常)，所以这就是我们在自己实现类加载器时不建议重写loadClass而是重写findClass的原因<br/>
+
+```Java
+    //加载类
+    protected Class<?> loadClass(String name, boolean resolve)
+        throws ClassNotFoundException
+    {
+        synchronized (getClassLoadingLock(name)) {
+            Class<?> c = findLoadedClass(name);
+            //自己的缓存中找不到
+            if (c == null) {
+                long t0 = System.nanoTime();
+                try {
+                	//委托给父加载器
+                    if (parent != null) {
+                    	//父加载器同样的策略：先找自身缓存,找不到再向上委托
+                        c = parent.loadClass(name, false);
+                    } else {
+                    	//缓存中没有,且当前加载器是Bootstrap加载器,直接使用它来加载
+                        c = findBootstrapClassOrNull(name);//这个方法加载类,成功返回该类Class对象,不成功返回null
+                    }
+                } catch (ClassNotFoundException e) {
+                }
+                //如果Bootstrap加载器加载后返回null,说明加载失败
+                if (c == null) {
+                    long t1 = System.nanoTime();
+                    //抛出异常
+                    c = findClass(name);
+                    sun.misc.PerfCounter.getParentDelegationTime().addTime(t1 - t0);
+                    sun.misc.PerfCounter.getFindClassTime().addElapsedTimeFrom(t1);
+                    sun.misc.PerfCounter.getFindClasses().increment();
+                }
+            }
+            if (resolve) {
+                resolveClass(c);
+            }
+            return c;
+        }
+    }
+    public Class<?> loadClass(String name) throws ClassNotFoundException {
+        return loadClass(name, false);
+    }
+    protected Class<?> findClass(String name) throws ClassNotFoundException {
+        throw new ClassNotFoundException(name);
+    }
+    //查找类,查找自己的缓存
+    private native final Class<?> findLoadedClass0(String name);
+    protected final Class<?> findLoadedClass(String name) {
+        if (!checkName(name))
+            return null;
+        return findLoadedClass0(name);
+    }
+    //调用Bootstrap器去加载类,并返回该类的一个Class对象
+    private native Class<?> findBootstrapClass(String name);
+    private Class<?> findBootstrapClassOrNull(String name)
+    {
+        if (!checkName(name)) return null;
+
+        return findBootstrapClass(name);
+    }
+    private native Class<?> findBootstrapClass(String name);
+```
+
+接下来是defineClass方法，加载byte[ ]数组表示的类。通常我们实现自定义网络类加载器时可以重写findClass，然后在findClass方法中调用此方法以接收网络上传输的用字节数组表示的类<br/>
+
+```Java
+    //定义类
+    //加载byte[]数组表示的类,并返回该类的Class对象,当需要加载的源文件不是.class时可以用这个方法
+    //封装native方法得到一系列重载
+    private native Class<?> defineClass0(String name, byte[] b, int off, int len,
+                                         ProtectionDomain pd);
+
+    private native Class<?> defineClass1(String name, byte[] b, int off, int len,
+                                         ProtectionDomain pd, String source);
+
+    private native Class<?> defineClass2(String name, java.nio.ByteBuffer b,
+                                         int off, int len, ProtectionDomain pd,
+                                         String source);
+    protected final Class<?> defineClass(byte[] b, int off, int len)throws ClassFormatError
+    {
+        return defineClass(null, b, off, len, null);
+    }
+    protected final Class<?> defineClass(String name, byte[] b, int off, int len)throws ClassFormatError
+    {
+        return defineClass(name, b, off, len, null);
+    }
+    protected final Class<?> defineClass(String name, byte[] b, int off, int len,ProtectionDomain protectionDomain)throws ClassFormatError
+    {
+        protectionDomain = preDefineClass(name, protectionDomain);
+        String source = defineClassSourceLocation(protectionDomain);
+        Class<?> c = defineClass1(name, b, off, len, protectionDomain, source);
+        postDefineClass(c, protectionDomain);
+        return c;
+    }
+    protected final Class<?> defineClass(String name, java.nio.ByteBuffer b,ProtectionDomain protectionDomain)throws ClassFormatError
+    {
+        int len = b.remaining();
+        if (!b.isDirect()) {
+            if (b.hasArray()) {
+                return defineClass(name, b.array(),
+                                   b.position() + b.arrayOffset(), len,
+                                   protectionDomain);
+            } else {
+                byte[] tb = new byte[len];
+                b.get(tb); 
+                return defineClass(name, tb, 0, len, protectionDomain);
+            }
+        }
+        protectionDomain = preDefineClass(name, protectionDomain);
+        String source = defineClassSourceLocation(protectionDomain);
+        Class<?> c = defineClass2(name, b, b.position(), len, protectionDomain, source);
+        postDefineClass(c, protectionDomain);
+        return c;
+    }
+```
+
+还有一部分值得注意的是并行类加载器相关，详细见《深入理解OSGI》。AppClassLoader->ExtClassLoader->BootstrapClassLoader这种固定的加载顺序无法实现分模块热替换，OSGI的规范要求每个模块都有自己的类加载器,而模块之间的依赖关系,就形成了各个类加载器之间的委派关系。这种委派关系是动态的,所有的bundle之间的类加载形成了错综复杂的网状结构，不再是一沉不变的单一的树状结构。<br/>
+
+jdk1.6之前直接同步整个loadClass方法使得网状加载关系会造成死锁：比如模块A 和模块B 互相引用了对方的包。这样在A加载B的包时，A在自己的类加载器的loadClass方法中，会最终调用到B的类加载器的loadClass方法。也就是说，A首先锁住自己的类加载器，然后再去申请B的类加载器的锁；当B加载A的包时，正好相反。这样，在多线程下，就会产生死锁。所以jdk1.8使用代码段的行级锁,使用一个ConcurrentHashMap<String, Object>，将ClassName和一个Object关联，每次类加载时返回ClassName映射Object的引用作为监视器对象<br/>
+
+```Java
+    //并行加载器,需要调用此方法在初始化是加载自身
+    @CallerSensitive
+    protected static boolean registerAsParallelCapable() {
+        Class<? extends ClassLoader> callerClass =
+            Reflection.getCallerClass().asSubclass(ClassLoader.class);
+        //注册自身
+        return ParallelLoaders.register(callerClass);
+    }
+    private static class ParallelLoaders {
+    	private ParallelLoaders() {}
+    	//使用set保存注册过的类加载器
+        private static final Set<Class<? extends ClassLoader>> loaderTypes =
+            Collections.newSetFromMap(
+                new WeakHashMap<Class<? extends ClassLoader>, Boolean>());
+        static {
+            synchronized (loaderTypes) { loaderTypes.add(ClassLoader.class); }
+        }
+        //注册
+        static boolean register(Class<? extends ClassLoader> c) {
+            synchronized (loaderTypes) {
+                if (loaderTypes.contains(c.getSuperclass())) {
+                    //将加载器本身注册为并行
+                    loaderTypes.add(c);
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        }
+        //检查是否注册
+        static boolean isRegistered(Class<? extends ClassLoader> c) {
+            synchronized (loaderTypes) {
+                return loaderTypes.contains(c);
+            }
+        }
+    }
+    //并行监视器对象：jdk1.6之后出现的防止网状结构的加载链造成的死锁问题
+    private final ConcurrentHashMap<String, Object> parallelLockMap;
+    //获取监视器对象
+    protected Object getClassLoadingLock(String className) {
+        Object lock = this;
+        if (parallelLockMap != null) {
+            Object newLock = new Object();
+            //putIfAbsent检查kv是否已经映射,是返回k,否则建立映射并返回v
+            //这样将每个className都关联一个对象,加载这个类时返回这个对象作为锁对象
+            lock = parallelLockMap.putIfAbsent(className, newLock);
+            if (lock == null) {
+                lock = newLock;
+            }
+        }
+        //parallelLockMap为空：返回this(这与同步整个loadClass相等了,据说这是为了向前兼容)
+        //parallelLockMap不为空：直接返回
+        return lock;
+    }
+```
