@@ -1195,3 +1195,358 @@ public class Thread implements Runnable {
     int threadLocalRandomSecondarySeed;
 }
 ```
+<hr/>
+
+## ThreadLocal 类
+线程隔离变量实现方式：Thread持有一个ThreadLocalMap的引用，key是申明变量时的ThreadLocal对象，value是要保存的数据对象。所以真正保存的数据在线程对象里。<br/>
+
+ThreadLocalMap：<br/>
+是ThreadLocal的静态成员内部类，实现了一个map，嵌套实现了一个Entry节点类(key为ThreadLocal对象的弱引用，value保存数据对象)。这个map使用Entry循环数组组成一张table，首先计算key的hash值找到数组下标，然后利用线性探测法寻找临近的空位。数组容量为2的幂次方(方便与hash值求模得到均匀的数组下标)，扩容阈值为长度的三分之二。提供了系列操作节点的方法。<br/>
+
+弱引用：<br/>
+Entry节点类继承自WeakReference<T>，接口方法get()返回T对象的引用，这里T类型ThreadLocal的对象引用变为弱引用。因为ThreadLocal对象如果使用强引用会造成生命周期与线程绑定，而现在线程通常需要复用会造成ThreadLocal对象一直可达而不被GC。ThreadLocal对象使用弱引用的话，在没有强引用它时通常其对象会在下一次GC被清理掉而使得key为null，我们可以手动设置value为null断开数据对象的强引用。<br/>
+
+ThreadLocal：<br/>
+除实现了静态成员内部类ThreadLocalMap之外，仅包含几个方法用于操作Thread的ThreadLocalMap成员来保存数据对象。值的注意的是他计算hash从id累加魔数而来，这样得到的hash值可以与数组长度求模，均匀映射到长度为2的幂次方的数组下标上。<br/>
+
+ThreadLocalMap 源码<br/>
+
+```Java
+//Map：环形的键值对数组
+static class ThreadLocalMap { 
+	
+	//初始容量
+    private static final int INITIAL_CAPACITY = 16;
+    //节点数组
+    private Entry[] table;
+    //容量实际使用值
+    private int size = 0;
+    //扩容阈值,容量的2/3
+    private int threshold;
+  
+	//Entry节点类
+    //通常线程需要复用而生命周期长,Entry键值对与线程之间的引用关系使得Entry难以被回收
+    //对象强引用链不可达通常活不过下一次GC,实现这个接口的对象就复合这种要求
+	static class Entry extends WeakReference<ThreadLocal<?>> {
+        //需要保存的值
+        Object value;
+        //key：ThreadLocal对象的引用,value：需要保存的值
+        Entry(ThreadLocal<?> k, Object v) {
+            super(k);
+            value = v;
+        }
+    }
+    
+    //构造器
+    ThreadLocalMap(ThreadLocal<?> firstKey, Object firstValue) {
+    	//创建节点数组ThreadLocal引用作为键,hash值来计算数组下标
+        table = new Entry[INITIAL_CAPACITY];
+        //计算数组下标
+        int i = firstKey.threadLocalHashCode & (INITIAL_CAPACITY - 1);
+        //添加元素
+        table[i] = new Entry(firstKey, firstValue);
+        //改变size
+        size = 1;
+        //计算扩容阈值
+        setThreshold(INITIAL_CAPACITY);
+    }
+    private ThreadLocalMap(ThreadLocalMap parentMap) {
+        Entry[] parentTable = parentMap.table;
+        int len = parentTable.length;
+        setThreshold(len);
+        table = new Entry[len];
+        for (int j = 0; j < len; j++) {
+            Entry e = parentTable[j];
+            if (e != null) {
+                @SuppressWarnings("unchecked")
+                ThreadLocal<Object> key = (ThreadLocal<Object>) e.get();
+                if (key != null) {
+                    Object value = key.childValue(e.value);
+                    Entry c = new Entry(key, value);
+                    int h = key.threadLocalHashCode & (len - 1);
+                    while (table[h] != null)
+                        h = nextIndex(h, len);
+                    table[h] = c;
+                    size++;
+                }
+            }
+        }
+    }
+	
+    //计算扩容阈值
+    private void setThreshold(int len) {
+        threshold = len * 2 / 3;
+    }
+    //环形数组下标移动：用于线性探测法寻找临近的空位
+    private static int nextIndex(int i, int len) {
+        return ((i + 1 < len) ? i + 1 : 0);
+    }
+    private static int prevIndex(int i, int len) {
+        return ((i - 1 >= 0) ? i - 1 : len - 1);
+    }
+    //重新计算hash值
+    private void rehash() {
+    	//清理数组上无效key引用映射的value
+        expungeStaleEntries();
+        //可能使得容量实际使用小很多,所以将扩容阈值调低,然后在判断是否需要扩容
+        if (size >= threshold - threshold / 4)
+        	//扩容
+            resize();
+    }
+    //数组扩容
+    private void resize() {
+        Entry[] oldTab = table;
+        int oldLen = oldTab.length;
+        int newLen = oldLen * 2;
+        Entry[] newTab = new Entry[newLen];
+        int count = 0;
+
+        for (int j = 0; j < oldLen; ++j) {
+            Entry e = oldTab[j];
+            if (e != null) {
+                ThreadLocal<?> k = e.get();
+                if (k == null) {
+                    e.value = null;
+                } else {
+                    int h = k.threadLocalHashCode & (newLen - 1);
+                    while (newTab[h] != null)
+                        h = nextIndex(h, newLen);
+                    newTab[h] = e;
+                    count++;
+                }
+            }
+        }
+        setThreshold(newLen);
+        size = count;
+        table = newTab;
+    }
+
+    //获取节点
+    //会被ThreadLocal的get方法直接调用,用于获取map中某个ThreadLocal存放的值
+    private Entry getEntry(ThreadLocal<?> key) {
+    	//ThreadLocal为键
+    	//使用键的hash值计算数组下标
+        int i = key.threadLocalHashCode & (table.length - 1);
+        Entry e = table[i];
+        //因为是线性探测法,一个key的hash值会映射到多个数组下标,首先正向映射找到节点,再反向映射判断是否是我们查找的节点
+        if (e != null && e.get() == key)
+            return e;
+        else
+        	//未直接命中,向后寻找
+            return getEntryAfterMiss(key, i, e);
+    }
+    //未直接命中,向后寻找
+    private Entry getEntryAfterMiss(ThreadLocal<?> key, int i, Entry e) {
+        Entry[] tab = table;
+        int len = tab.length;
+        while (e != null) {
+            ThreadLocal<?> k = e.get();
+            if (k == key)
+                return e;
+            if (k == null)
+                expungeStaleEntry(i);
+            else
+                i = nextIndex(i, len);
+            e = tab[i];
+        }
+        return null;
+    }
+
+    //保存变量
+    private void set(ThreadLocal<?> key, Object value) {
+        Entry[] tab = table;
+        int len = tab.length;
+        //ThreadLocal为key,通过key的hash值找到数组下标
+        int i = key.threadLocalHashCode & (len-1);
+        for (Entry e = tab[i];
+             e != null;
+        	 //该位置不为空,看下一个位置是否为空
+             e = tab[i = nextIndex(i, len)]) {
+            ThreadLocal<?> k = e.get();
+            if (k == key) {
+            	//覆盖原有value
+                e.value = value;
+                return;
+            }
+            if (k == null) {
+                replaceStaleEntry(key, value, i);
+                return;
+            }
+        }
+        tab[i] = new Entry(key, value);
+        int sz = ++size;
+        if (!cleanSomeSlots(i, sz) && sz >= threshold)
+            rehash();
+    }
+    //删除变量
+    private void remove(ThreadLocal<?> key) {
+        Entry[] tab = table;
+        int len = tab.length;
+        int i = key.threadLocalHashCode & (len-1);
+        //同样,没找到继续向后找
+        for (Entry e = tab[i];
+             e != null;
+             e = tab[i = nextIndex(i, len)]) {
+            if (e.get() == key) {
+                e.clear();
+                expungeStaleEntry(i);
+                return;
+            }
+        }
+    }
+ 
+    //清理
+    private boolean cleanSomeSlots(int i, int n) {
+        boolean removed = false;
+        Entry[] tab = table;
+        int len = tab.length;
+        do {//挨个向后
+            i = nextIndex(i, len);
+            Entry e = tab[i];
+            //找到某个有效Entry(Enter不为空或者threadLocal也还没被GC掉)
+            if (e != null && e.get() == null) {
+                n = len;
+                removed = true;
+                //从这个位置开始清理一个连续段
+                i = expungeStaleEntry(i);
+            }
+        } while ( (n >>>= 1) != 0);
+        return removed;
+    }
+
+    //清理节点
+    //key是弱引用被GC掉,那么value由我们显示断开强引用
+    private int expungeStaleEntry(int staleSlot) {
+        Entry[] tab = table;
+        int len = tab.length;
+        //显示断开value的强引用
+        tab[staleSlot].value = null;
+        tab[staleSlot] = null;
+        size--;
+        Entry e;
+        int i;
+        //向后遍历,遍历连续段的有Entry对象的数组位置
+        for (i = nextIndex(staleSlot, len);(e = tab[i]) != null;i = nextIndex(i, len)) {
+            ThreadLocal<?> k = e.get();
+            //Entry不为空,但是key(ThreadLocal)为空(已经被GC掉),则将value置空
+            if (k == null) {
+                e.value = null;
+                tab[i] = null;
+                size--;
+            } else {
+                int h = k.threadLocalHashCode & (len - 1);
+                if (h != i) {
+                    tab[i] = null;
+                    while (tab[h] != null)
+                        h = nextIndex(h, len);
+                    tab[h] = e;
+                }
+            }
+        }
+        return i;
+    }
+    //清理数组
+    private void expungeStaleEntries() {
+        Entry[] tab = table;
+        int len = tab.length;
+        for (int j = 0; j < len; j++) {
+            Entry e = tab[j];
+            if (e != null && e.get() == null)
+                expungeStaleEntry(j);
+        }
+    }
+}
+```
+
+ThreadLocal 源码<br/>
+
+```Java
+public class ThreadLocal<T> {
+
+	//hash值：这个值与2的幂次方取模(数组长度)可以得到一个均匀的结果
+    private final int threadLocalHashCode = nextHashCode();
+    private static int nextHashCode() {
+    	//id累加魔数,得到一个hash值
+        return nextHashCode.getAndAdd(HASH_INCREMENT);
+    }
+    //id
+    private static AtomicInteger nextHashCode = new AtomicInteger();
+    //魔数
+    private static final int HASH_INCREMENT = 0x61c88647;
+    //构造器
+    public ThreadLocal() {
+    }
+    protected T initialValue() {
+        return null;
+    }
+    public static <S> ThreadLocal<S> withInitial(Supplier<? extends S> supplier) {
+        return new SuppliedThreadLocal<>(supplier);
+    }
+    
+    //get
+    public T get() {
+        Thread t = Thread.currentThread();
+        ThreadLocalMap map = getMap(t);
+        if (map != null) {
+            ThreadLocalMap.Entry e = map.getEntry(this);
+            if (e != null) {
+                @SuppressWarnings("unchecked")
+                T result = (T)e.value;
+                return result;
+            }
+        }
+        return setInitialValue();
+    }
+    //set
+    public void set(T value) {
+        Thread t = Thread.currentThread();
+        ThreadLocalMap map = getMap(t);
+        if (map != null)
+            map.set(this, value);
+        else
+            createMap(t, value);
+    }
+    private T setInitialValue() {
+        T value = initialValue();
+        Thread t = Thread.currentThread();
+        ThreadLocalMap map = getMap(t);
+        if (map != null)
+            map.set(this, value);
+        else
+            createMap(t, value);
+        return value;
+    }
+     //remove
+     public void remove() {
+         ThreadLocalMap m = getMap(Thread.currentThread());
+         if (m != null)
+             m.remove(this);
+     } 
+    //返回Map
+    ThreadLocalMap getMap(Thread t) {
+        return t.threadLocals;
+    }
+    //创建Map
+    //第一次保存数据的时候调用			
+    void createMap(Thread t, T firstValue) {
+        t.threadLocals = new ThreadLocalMap(this, firstValue);
+    }
+    
+    static ThreadLocalMap createInheritedMap(ThreadLocalMap parentMap) {
+        return new ThreadLocalMap(parentMap);
+    }
+    T childValue(T parentValue) {
+        throw new UnsupportedOperationException();
+    }
+    static final class SuppliedThreadLocal<T> extends ThreadLocal<T> {
+        private final Supplier<? extends T> supplier;
+        SuppliedThreadLocal(Supplier<? extends T> supplier) {
+            this.supplier = Objects.requireNonNull(supplier);
+        }
+        @Override
+        protected T initialValue() {
+            return supplier.get();
+        }
+    }
+}
+```
