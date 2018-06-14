@@ -2714,3 +2714,397 @@ jdk1.6之前直接同步整个loadClass方法使得网状加载关系会造成�
         return lock;
     }
 ```
+<hr/>
+
+## Compiler 类
+JIT编译器：<br/>
+即时编译器，java程序一开始由解释器(Interpreter)来解释执行的，但当jvm发现某些代码运行频繁会将他们认定为热点代码(HotSpot Code)，jvm将这些代码编译成本地机器码并进行各种层次的优化，JTI用于完成上述任务。<br/>
+
+Interpreter解释器：<br/>
+解释执行class文件<br/>
+
+HotSpot虚拟机：<br/>
+有两种JTI编译器c1和c2(client和server)，早期是是一个编译器和一个解释器配合工作，jdk1.7后还采用了分层编译(c1和c2可同时工作)。<br/>
+
+而Compiler类仅是jvm中JTI编译器的占位符,仅在存在编译器可用时本类才有效<br/>
+```Java
+public final class Compiler  {
+	//禁止实例化
+    private Compiler() {}       
+    private static native void initialize();
+    private static native void registerNatives();
+    static {
+        registerNatives();
+        java.security.AccessController.doPrivileged(
+            new java.security.PrivilegedAction<Void>() {
+                public Void run() {
+                    boolean loaded = false;
+                    //访问系统属性,查看是否有JIT编译器
+                    String jit = System.getProperty("java.compiler");
+                    if ((jit != null)&&(!jit.equals("NONE"))&&(!jit.equals("")))
+                    {
+                        try {
+                        	//加载JTI编译器的本地库
+                            System.loadLibrary(jit);
+                            initialize();
+                            loaded = true;//加载成功
+                        } catch (UnsatisfiedLinkError e) {
+                        	//加载JTI编译器的本地库失败
+                            System.err.println("Warning: JIT compiler \"" +jit + "\" not found. Will use interpreter.");
+                        }
+                    }
+                    String info = System.getProperty("java.vm.info");
+                    //加载成功或失败,分别修改系统属性
+                    if (loaded) {
+                        System.setProperty("java.vm.info", info + ", " + jit);//加载成功
+                    } else {
+                        System.setProperty("java.vm.info", info + ", nojit");//加载失败
+                    }
+                    return null;
+                }
+            });
+    }
+
+    //编译指定的类
+    public static native boolean compileClass(Class<?> clazz);
+    //编译名称与指定字符串匹配的所有类
+    public static native boolean compileClasses(String string);
+    //检查参数类型及其字段并执行一些文档化操作
+    public static native Object command(Object any);
+    //导致编译器恢复运行
+    public static native void enable();
+    //导致编译器停止运行
+    public static native void disable();
+}
+```
+<hr/>
+
+## System
+System类会在类加载时调用其静态的初始化方法，会初始化系统属性、流等，并给出一系列系统级别的方法包括currentTimeMillis()、arraycopy()、exit()、gc()、getenv()、runFinalization()等等。<br/>
+
+类申明<br/>
+
+```Java
+public final class System {  
+}  
+``` 
+
+构造方法私有不允许外部实例化<br/>
+
+```Java
+//禁止实例化,方法均静态  
+private System() {  
+} 
+```
+
+类加载时注册，会由jvm调用System的初始化方法<br/>
+
+```Java
+	//方法注册
+	//注释说会jvm调用initializeSystemClass
+    private static native void registerNatives();
+    static {
+      registerNatives();
+    }
+    //初始化System类
+    private static void initializeSystemClass() {
+    	//初始化系统属性
+        props = new Properties();
+        initProperties(props);//native方法,由jvm调用
+        sun.misc.VM.saveAndRemoveProperties(props);
+        //得到行分隔符
+        lineSeparator = props.getProperty("line.separator");
+        sun.misc.Version.init();
+        //初始化流
+        FileInputStream fdIn = new FileInputStream(FileDescriptor.in);
+        FileOutputStream fdOut = new FileOutputStream(FileDescriptor.out);
+        FileOutputStream fdErr = new FileOutputStream(FileDescriptor.err);
+        setIn0(new BufferedInputStream(fdIn));
+        setOut0(newPrintStream(fdOut, props.getProperty("sun.stdout.encoding")));
+        setErr0(newPrintStream(fdErr, props.getProperty("sun.stderr.encoding")));
+        loadLibrary("zip");
+        Terminator.setup();
+        sun.misc.VM.initializeOSEnvironment();
+        Thread current = Thread.currentThread();
+        current.getThreadGroup().add(current);
+        setJavaLangAccess();
+        sun.misc.VM.booted();
+    }
+    private static void setJavaLangAccess() {
+        // Allow privileged classes outside of java.lang
+        sun.misc.SharedSecrets.setJavaLangAccess(new sun.misc.JavaLangAccess(){
+            public sun.reflect.ConstantPool getConstantPool(Class<?> klass) {
+                return klass.getConstantPool();
+            }
+            public boolean casAnnotationType(Class<?> klass, AnnotationType oldType, AnnotationType newType) {
+                return klass.casAnnotationType(oldType, newType);
+            }
+            public AnnotationType getAnnotationType(Class<?> klass) {
+                return klass.getAnnotationType();
+            }
+            public Map<Class<? extends Annotation>, Annotation> getDeclaredAnnotationMap(Class<?> klass) {
+                return klass.getDeclaredAnnotationMap();
+            }
+            public byte[] getRawClassAnnotations(Class<?> klass) {
+                return klass.getRawAnnotations();
+            }
+            public byte[] getRawClassTypeAnnotations(Class<?> klass) {
+                return klass.getRawTypeAnnotations();
+            }
+            public byte[] getRawExecutableTypeAnnotations(Executable executable) {
+                return Class.getExecutableTypeAnnotationBytes(executable);
+            }
+            public <E extends Enum<E>>
+                    E[] getEnumConstantsShared(Class<E> klass) {
+                return klass.getEnumConstantsShared();
+            }
+            public void blockedOn(Thread t, Interruptible b) {
+                t.blockedOn(b);
+            }
+            public void registerShutdownHook(int slot, boolean registerShutdownInProgress, Runnable hook) {
+                Shutdown.add(slot, registerShutdownInProgress, hook);
+            }
+            public int getStackTraceDepth(Throwable t) {
+                return t.getStackTraceDepth();
+            }
+            public StackTraceElement getStackTraceElement(Throwable t, int i) {
+                return t.getStackTraceElement(i);
+            }
+            public String newStringUnsafe(char[] chars) {
+                return new String(chars, true);
+            }
+            public Thread newThreadWithAcc(Runnable target, AccessControlContext acc) {
+                return new Thread(target, acc);
+            }
+            public void invokeFinalize(Object o) throws Throwable {
+                o.finalize();
+            }
+        });
+    }
+```
+
+给出流<br/>
+
+```Java
+  //流
+    public final static InputStream in = null;
+    public final static PrintStream out = null;
+    public final static PrintStream err = null;
+    //设置流
+    public static void setIn(InputStream in) {
+        checkIO();
+        setIn0(in);
+    }
+    public static void setOut(PrintStream out) {
+        checkIO();
+        setOut0(out);
+    }
+    public static void setErr(PrintStream err) {
+        checkIO();
+        setErr0(err);
+    }
+    private static native void setIn0(InputStream in);
+    private static native void setOut0(PrintStream out);
+    private static native void setErr0(PrintStream err);
+    private static void checkIO() {
+        SecurityManager sm = getSecurityManager();
+        if (sm != null) {
+            sm.checkPermission(new RuntimePermission("setIO"));
+        }
+    }
+    private static PrintStream newPrintStream(FileOutputStream fos, String enc) {
+        if (enc != null) {
+             try {
+                 return new PrintStream(new BufferedOutputStream(fos, 128), true, enc);
+             } catch (UnsupportedEncodingException uee) {}
+         }
+         return new PrintStream(new BufferedOutputStream(fos, 128), true);
+     }  
+```
+
+会初始化一些系统属性，可以指定键名获取<br/>
+
+```Java
+//系统属性
+    private static Properties props;
+    //初始化所有系统属性
+    private static native Properties initProperties(Properties props);
+    //返回所有系统属性
+    public static Properties getProperties() {
+        SecurityManager sm = getSecurityManager();
+        if (sm != null) {
+            sm.checkPropertiesAccess();
+        }
+        return props;
+    }
+    //返回指定系统属性
+    public static String getProperty(String key) {
+        checkKey(key);//检查属性名称 
+        SecurityManager sm = getSecurityManager();
+        if (sm != null) {
+            sm.checkPropertyAccess(key);
+        }
+
+        return props.getProperty(key);
+    }
+    public static String getProperty(String key, String def) {
+        checkKey(key);
+        SecurityManager sm = getSecurityManager();
+        if (sm != null) {
+            sm.checkPropertyAccess(key);
+        }
+
+        return props.getProperty(key, def);
+    }
+    //设置所有系统属性
+    public static void setProperties(Properties props) {
+        SecurityManager sm = getSecurityManager();
+        if (sm != null) {
+            sm.checkPropertiesAccess();
+        }
+        if (props == null) {
+            props = new Properties();
+            initProperties(props);
+        }
+        System.props = props;
+    }
+    //设置指定系统属性
+    public static String setProperty(String key, String value) {
+        checkKey(key);
+        SecurityManager sm = getSecurityManager();
+        if (sm != null) {
+            sm.checkPermission(new PropertyPermission(key,
+                SecurityConstants.PROPERTY_WRITE_ACTION));
+        }
+        return (String) props.setProperty(key, value);
+    }
+    //清除指定系统属性
+    public static String clearProperty(String key) {
+        checkKey(key);
+        SecurityManager sm = getSecurityManager();
+        if (sm != null) {
+            sm.checkPermission(new PropertyPermission(key, "write"));
+        }
+
+        return (String) props.remove(key);
+    }
+    //检查属性名称
+    private static void checkKey(String key) {
+        if (key == null) {
+            throw new NullPointerException("key can't be null");
+        }
+        if (key.equals("")) {
+            throw new IllegalArgumentException("key can't be empty");
+        }
+    }
+```
+
+还包括一些常用的系统方法<br/>
+
+```Java
+    //返回操作系统时间的毫秒数
+    public static native long currentTimeMillis();
+    //拷贝数组
+    //Arrays.copyOf也是基于本方法实现
+    //数组克隆也可以实现拷贝,但是没有此方法效率高
+    public static native void arraycopy(Object src,  int  srcPos,Object dest, int destPos,int length);  
+    //行分隔符
+    private static String lineSeparator;   
+    public static String lineSeparator() {
+        return lineSeparator;
+    }
+    //退出虚拟机
+    //唯一终止程序却不走finally
+    public static void exit(int status) {
+        Runtime.getRuntime().exit(status);
+    }
+    //运行垃圾回收
+    public static void gc() {
+        Runtime.getRuntime().gc();
+    }
+    //与当前jvm唯一关联的控制台对象
+    private static volatile Console cons = null;
+     public static Console console() {
+         if (cons == null) {
+             synchronized (System.class) {
+                 cons = sun.misc.SharedSecrets.getJavaIOAccess().console();
+             }
+         }
+         return cons;
+     }
+     //获取指定的环境变量
+     public static String getenv(String name) {
+         SecurityManager sm = getSecurityManager();
+         if (sm != null) {
+             sm.checkPermission(new RuntimePermission("getenv."+name));
+         }
+
+         return ProcessEnvironment.getenv(name);
+     }
+     //获取所有的环境变量
+     public static java.util.Map<String,String> getenv() {
+         SecurityManager sm = getSecurityManager();
+         if (sm != null) {
+             sm.checkPermission(new RuntimePermission("getenv.*"));
+         }
+         return ProcessEnvironment.getenv();
+     }
+     //返回对象hash码
+     public static native int identityHashCode(Object x);
+     //返回jvm的时间,纳秒
+     public static native long nanoTime();
+     //加载指定本机库
+     @CallerSensitive
+     public static void load(String filename) {
+         Runtime.getRuntime().load0(Reflection.getCallerClass(), filename);
+     }
+     //加载指定本机库
+     @CallerSensitive
+     public static void loadLibrary(String libname) {
+         Runtime.getRuntime().loadLibrary0(Reflection.getCallerClass(), libname);
+     }
+     //将库表名称映射到特定字符串
+     public static native String mapLibraryName(String libname);
+     //强制调用已经失去引用的对象的finalize方法 
+     public static void runFinalization() {
+         Runtime.getRuntime().runFinalization();
+     }
+     public static Channel inheritedChannel() throws IOException {
+         return SelectorProvider.provider().inheritedChannel();
+     }
+```
+<hr/>
+
+## Void 类
+void可以看做是一种基本数据类型,Void可以看做是其包装类<br/>
+```Java
+//Void是一个占位符类  
+public final class Void {  
+  
+    //可用于反射判断void类型的方法  
+    @SuppressWarnings("unchecked")  
+    public static final Class<Void> TYPE = (Class<Void>) Class.getPrimitiveClass("void");  
+  
+    //不可实例化  
+    private Void() {}  
+} 
+```
+
+给出一个测试类<br/>
+
+```Java
+public class testJDK {  
+        
+    //void方法  
+    public void method1(){  
+          
+    }   
+    public static void main(String args[]) throws NoSuchMethodException, SecurityException{  
+  
+        //打印方法返回类型  
+        System.out.println(testJDK.class.getMethod("method1").getReturnType());//void  
+        //判断方法返回类型  
+        System.out.println(testJDK.class.getMethod("method1").getReturnType()==Void.TYPE);//true  
+    }  
+}  
+```
