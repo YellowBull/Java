@@ -20,7 +20,7 @@
 　　　　　　　│　　　 │java.util.StringTokenizer
 　　　　　　　│　　　 │java.util.Vector
 　　　　　　　│　　　 │　　　　　　└java.util.Stack
-　 Java.util ┤　　　  └java.util.TimeZone
+　 Java.util ┤　　　 └java.util.TimeZone
 　　　　　　　│　　　　　　　　　　└java.util.SimpleTimeZone
 　　　　　　　│　　　 ┌java.util.Enumeration
 　　　　　　　├接　口 ┤java.util.EventListener
