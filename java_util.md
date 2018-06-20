@@ -3,7 +3,7 @@
 ### java.util包的基本层次结构图
 
 ```Java
-			┌java.util.BitSet
+		┌java.util.BitSet
 　　　　　　　　　　　│java.util.Calendar
 　　　　　　　　　　　│　　　　　　└java.util.GregorianCalendar
 　　　　　　　　　　　│java.util.Date
