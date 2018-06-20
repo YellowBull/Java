@@ -11,7 +11,7 @@
 　　　　　　　　　　　│　　　　　　└java.util.Hashtable
 　　　　　　　　　　　│　　　　　　　　　　　　　└java.util.Properties
 　　　　　　　　　　　│java.util.EventObject
-　　　　　　　　　　　 │java.util.ResourceBundle
+　　　　　　　　　　　│java.util.ResourceBundle
 　　　　　　　┌普通类 ┤　　　　　　├java.util.ListResourceBundle
 　　　　　　　│　　　 │　　　　　　└java.util.PropertyResourceBundle
 　　　　　　　│　　　 │java.util.Local
