@@ -3,7 +3,7 @@
 ### java.util包的基本层次结构图
 
 ```Java
-┌java.util.BitSet
+					  ┌java.util.BitSet
 　　　　　　　　　　　│java.util.Calendar
 　　　　　　　　　　　│　　　　　　└java.util.GregorianCalendar
 　　　　　　　　　　　│java.util.Date
@@ -20,7 +20,7 @@
 　　　　　　　│　　　 │java.util.StringTokenizer
 　　　　　　　│　　　 │java.util.Vector
 　　　　　　　│　　　 │　　　　　　└java.util.Stack
-　Java.util ┤　　　 └java.util.TimeZone
+　 Java.util ┤　　　  └java.util.TimeZone
 　　　　　　　│　　　　　　　　　　└java.util.SimpleTimeZone
 　　　　　　　│　　　 ┌java.util.Enumeration
 　　　　　　　├接　口 ┤java.util.EventListener
@@ -341,13 +341,17 @@ size，isEmpty，get，set方法运行时间为常数。但是add方法开销为
 　　添加数据使用put(key, value)，取出数据使用get(key)，这两个基本操作的时间开销为常数。<br/>
 Hashtable通过initial capacity和load factor两个参数调整性能。通常缺省的load factor 0.75较好地实现了时间和空间的均衡。增大load factor可以节省空间但相应的查找时间将增大，这会影响像get和put这样的操作。<br/>
 使用Hashtable的简单示例如下，将1，2，3放到Hashtable中，他们的key分别是”one”，”two”，”three”：<br/>
+```Java
 　　　　Hashtable numbers = new Hashtable();<br/>
 　　　　numbers.put(“one”, new Integer(1));<br/>
 　　　　numbers.put(“two”, new Integer(2));<br/>
 　　　　numbers.put(“three”, new Integer(3));<br/>
+```
 　　要取出一个数，比如2，用相应的key：<br/>
+```Java
 　　　　Integer n = (Integer)numbers.get(“two”);<br/>
 　　　　System.out.println(“two = ” + n);<br/>
+```
 　　由于作为key的对象将通过计算其散列函数来确定与之对应的value的位置，因此任何作为key的对象都必须实现hashCode和equals方法。hashCode和equals方法继承自根类Object，如果你用自定义的类当作key的话，要相当小心，按照散列函数的定义，如果两个对象相同，即obj1.equals(obj2)=true，则它们的hashCode必须相同，但如果两个对象不同，则它们的hashCode不一定不同，如果两个不同对象的hashCode相同，这种现象称为冲突，冲突会导致操作哈希表的时间开销增大，所以尽量定义好的hashCode()方法，能加快哈希表的操作。<br/>
 　　如果相同的对象有不同的hashCode，对哈希表的操作会出现意想不到的结果（期待的get方法返回null），要避免这种问题，只需要牢记一条：要同时复写equals方法和hashCode方法，而不要只写其中一个。<br/>
 　　Hashtable是同步的。<br/>
