@@ -291,3 +291,10 @@ BlockingDeque 具有 4 组不同的方法用于插入、移除以及对双端队
 |插入	|addLast(o)	|offerLast(o)	|putLast(o)	|offerLast(o, timeout, timeunit)|
 |移除	|removeLast(o)	|pollLast(o)	|takeLast(o)	|pollLast(timeout, timeunit)|
 |检查	|getLast(o)	|peekLast(o)	|无	|无|
+
+四组不同的行为方式解释：<br/>
+
+* 抛异常：如果试图的操作无法立即执行，抛一个异常。
+* 特定值：如果试图的操作无法立即执行，返回一个特定的值(常常是 true / false)。
+* 阻塞：如果试图的操作无法立即执行，该方法调用将会发生阻塞，直到能够执行。
+* 超时：如果试图的操作无法立即执行，该方法调用将会发生阻塞，直到能够执行，但等待时间不会超过给定值。返回一个特定值以告知该操作是否成功(典型的是 true / false)。
