@@ -9,7 +9,6 @@ import java.util.List;
 public interface ExportExcelService<T> {
 	public void exportExcel(List<T> carinfos,Class c,String path,String sheetName,String[] names)throws Exception;
 	
-	public <T> List<T> extract(InputStream is, @SuppressWarnings("rawtypes") Class clas);
+	public <T> List<T> extract(InputStream is, String forName);
 }
-
 ```

@@ -4,17 +4,18 @@
 package com.yutian.spring.service.impl;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.security.Timestamp;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.apache.poi.hssf.usermodel.HSSFCell;
 import org.apache.poi.hssf.usermodel.HSSFCellStyle;
@@ -22,17 +23,16 @@ import org.apache.poi.hssf.usermodel.HSSFRow;
 import org.apache.poi.hssf.usermodel.HSSFSheet;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.hssf.util.HSSFColor;
-import org.apache.poi.xssf.usermodel.XSSFRow;
-import org.apache.poi.xssf.usermodel.XSSFSheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Repository;
 
 import com.yutian.spring.service.ExportExcelService;
+
 @Repository("exportExcelService")
 public class ExcelPortServiceImp<T> implements ExportExcelService<T>
 {
     private static Logger logger = Logger.getLogger(ExcelPortServiceImp.class);
 
+    // Excel 下载
     @Override
     public void exportExcel(List<T> ts, Class clas, String path, String sheetName, String[] names) throws Exception
     {
@@ -55,7 +55,7 @@ public class ExcelPortServiceImp<T> implements ExportExcelService<T>
         style.setAlignment(HSSFCellStyle.ALIGN_CENTER); // 创建一个居中格式 
         //        Class c = Class.forName("com.yutian.spring.entity.Carinfo");
         Field[] fields = clas.getDeclaredFields();
-        //		String[] fieldNames = new String[fields.length];  
+        //      String[] fieldNames = new String[fields.length];  
         for (int i = 0; i < names.length; i++)
         {
             HSSFCell cell = row.createCell(i);
@@ -144,37 +144,69 @@ public class ExcelPortServiceImp<T> implements ExportExcelService<T>
 
     }
 
+    // Excel 上传解析
+    @SuppressWarnings("deprecation")
     @Override
-    public <T> List<T> extract(InputStream is, @SuppressWarnings("rawtypes") Class clas)
+    public <T> List<T> extract(InputStream is, String forName)
     {
         List<T> ts = new ArrayList<>();
         try
         {
             // InputStream is = new FileInputStream(file_name);
-            XSSFWorkbook xssfWorkbook = new XSSFWorkbook(is);
-            XSSFSheet sheet = xssfWorkbook.getSheetAt(0); //只读取第一个sheet进行处理
+            HSSFWorkbook workbook = new HSSFWorkbook(is);
+            HSSFSheet sheet = workbook.getSheetAt(0); //只读取第一个sheet进行处理
             for (int row_num = 1; row_num < (sheet.getLastRowNum() + 1); row_num++)
             { //处理当前sheet，循环读取每一行
-                XSSFRow xss_row = sheet.getRow(row_num);
-                Field[] fields = clas.getDeclaredFields();
-                Class<T> tCls = clas.getClass().newInstance();// 新建一个实体类
+                HSSFRow xss_row = sheet.getRow(row_num);
+                Class<?> clazz = Class.forName(forName);
+                Object object = clazz.newInstance();
+                Field[] fields = clazz.getDeclaredFields();
+                // Class<?> tCls = (Class<?>) clazz.getClass();// 新建一个实体类
                 for (int i = 0; i < fields.length; i++)
                 {
+                    Field field = fields[i];
                     String fieldName = fields[i].getName();
                     String setMethodName = "set" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
-                    Method setMethod = tCls.getMethod(setMethodName, new Class[]
-                    {});// 创建出所有的set方法
-                    setMethod.invoke(tCls, xss_row.getCell(i).getBooleanCellValue());// 把值set到对象中去
+                    Method setMethod = clazz.getMethod(setMethodName, new Class[]
+                    { fields[i].getType() });// 创建出所有的set方法
+
+                    if (field.getType().getSimpleName().equals("String"))
+                    {
+                        setMethod.invoke(object, xss_row.getCell(i).getStringCellValue());
+                    } else if (field.getType().getSimpleName().equals("Integer"))
+                    {
+                        if (StringUtils.isBlank(xss_row.getCell(i).getStringCellValue()))
+                        {
+                            continue;
+                        }
+                        setMethod.invoke(object, Integer.parseInt(xss_row.getCell(i).getStringCellValue()));
+                    } else if (field.getType().getSimpleName().equals("Date"))
+                    {
+                        if (StringUtils.isBlank(xss_row.getCell(i).getStringCellValue()))
+                        {
+                            continue;
+                        }
+                        SimpleDateFormat sf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S");
+                        setMethod.invoke(object, sf.parse(xss_row.getCell(i).getStringCellValue()));
+                    } else if (field.getType().getSimpleName().equals("Timestamp"))
+                    {
+                        if (StringUtils.isBlank(xss_row.getCell(i).getStringCellValue()))
+                        {
+                            continue;
+                        }
+                        SimpleDateFormat sf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                        String time = sf.format(sf.parse(xss_row.getCell(i).getStringCellValue()));
+                        setMethod.invoke(object, java.sql.Timestamp.valueOf(time));
+                    }
                 }
-                ts.add((T) tCls);
+                ts.add((T) object);
             }
         } catch (Exception e)
         {
-            logger.error("解析文件异常");
+            logger.error(e + "解析文件异常");
         }
         return ts;
     }
 
 }
-
 ```

@@ -53,7 +53,7 @@ public class EyTboxController
     private ExportExcelService exportExcelService;
 
     /**
-     * 分页查询EyTbox
+     * 分页查询 Excel导出EyTbox
      * 测试请求链接
      * http://localhost:8080/CarinfoMonitor1/tbox/manager/findEyTboxForPageList.mvc?page=1&rows=1&tboxFactory=-1&flowState=-1
      */
@@ -107,4 +107,52 @@ public class EyTboxController
     }
 
 }
+
+
+
+    /**
+     * excle 批量新增
+     */
+    @SuppressWarnings("unchecked")
+    @ResponseBody
+    @RequestMapping("/addEyTboxsByExcel.mvc")
+    public String addEyTboxsByExcel(@RequestParam("fileImport") MultipartFile file)
+    {
+        logger.info("/addEyTboxsByExcel.mvc -------Start");
+        JSONObject json = new JSONObject();
+        List<EyTbox> eyTBoxs = null;
+        try
+        {
+            InputStream inputStream = file.getInputStream();
+            eyTBoxs = exportExcelService.extract(inputStream, "com.yutian.spring.entity.EyTbox");
+        } catch (IOException e)
+        {
+            json.put("flag", "-1");
+            json.put("msg", "Excel 新增TBox失败！");
+            logger.error(e + "Excel 新增TBox失败！");
+            return json.toString();
+        }
+
+        try
+        {
+            String flag = eyTboxService.addEyTboxsByExcel(eyTBoxs);
+            if ("-1".equals(flag))
+            {
+                json.put("flag", "-1");
+                json.put("msg", "Excel 中信息未填加完整！");
+                logger.error("Excel 中信息未填加完整！");
+                return json.toString();
+            }
+            json.put("flag", "1");
+            json.put("msg", "Excel 新增TBox成功！");
+            logger.info("/addEyTboxsByExcel.mvc -------End");
+            return json.toString();
+        } catch (Exception e)
+        {
+            json.put("flag", "-1");
+            json.put("msg", "Excel 新增TBox失败！");
+            logger.error(e + "Excel 新增TBox失败！");
+            return json.toString();
+        }
+    }
 ```
