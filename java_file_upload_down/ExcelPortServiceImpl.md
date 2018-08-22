@@ -17,12 +17,13 @@ import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.apache.poi.hssf.usermodel.HSSFCell;
-import org.apache.poi.hssf.usermodel.HSSFCellStyle;
-import org.apache.poi.hssf.usermodel.HSSFRow;
-import org.apache.poi.hssf.usermodel.HSSFSheet;
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.hssf.util.HSSFColor;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Repository;
 
 import com.yutian.spring.service.ExportExcelService;
@@ -32,33 +33,34 @@ public class ExcelPortServiceImp<T> implements ExportExcelService<T>
 {
     private static Logger logger = Logger.getLogger(ExcelPortServiceImp.class);
 
-    // Excel 下载
     @Override
-    public void exportExcel(List<T> ts, Class clas, String path, String sheetName, String[] names) throws Exception
+    public void exportExcel(List<T> ts, @SuppressWarnings("rawtypes") Class clas, String path, String filename, String[] names) throws Exception
     {
-        HSSFWorkbook wb = new HSSFWorkbook();
+        //HSSFWorkbook wb = new HSSFWorkbook();
+        //XSSFWorkbook workbook1 = new XSSFWorkbook(new FileInputStream(new File(path,filename)));
+        SXSSFWorkbook wb = new SXSSFWorkbook(100);
         // 第二步，在webbook中添加一个sheet,对应Excel文件中的sheet  
-        HSSFSheet sheet = wb.createSheet(sheetName);
+        Sheet sheet = wb.createSheet(filename);
         // 第三步，在sheet中添加表头第0行,注意老版本poi对Excel的行数列数有限制short  
-        HSSFRow row = sheet.createRow(0);
+        Row row = sheet.createRow(0);
         // 第四步，创建单元格，并设置值表头 设置表头居中  
-        HSSFCellStyle style = wb.createCellStyle();
-        HSSFCellStyle style2 = wb.createCellStyle();
+        CellStyle style = wb.createCellStyle();
+        CellStyle style2 = wb.createCellStyle();
         style2.setFillForegroundColor(HSSFColor.WHITE.index);
-        style2.setFillPattern(HSSFCellStyle.SOLID_FOREGROUND);
-        style2.setBorderBottom(HSSFCellStyle.BORDER_THIN);
-        style2.setBorderLeft(HSSFCellStyle.BORDER_THIN);
-        style2.setBorderRight(HSSFCellStyle.BORDER_THIN);
-        style2.setBorderTop(HSSFCellStyle.BORDER_THIN);
-        style2.setAlignment(HSSFCellStyle.ALIGN_CENTER);
-        style2.setVerticalAlignment(HSSFCellStyle.VERTICAL_CENTER);
-        style.setAlignment(HSSFCellStyle.ALIGN_CENTER); // 创建一个居中格式 
+        style2.setFillPattern(CellStyle.SOLID_FOREGROUND);
+        style2.setBorderBottom(CellStyle.BORDER_THIN);
+        style2.setBorderLeft(CellStyle.BORDER_THIN);
+        style2.setBorderRight(CellStyle.BORDER_THIN);
+        style2.setBorderTop(CellStyle.BORDER_THIN);
+        style2.setAlignment(CellStyle.ALIGN_CENTER);
+        style2.setVerticalAlignment(CellStyle.VERTICAL_CENTER);
+        style.setAlignment(CellStyle.ALIGN_CENTER); // 创建一个居中格式 
         //        Class c = Class.forName("com.yutian.spring.entity.Carinfo");
         Field[] fields = clas.getDeclaredFields();
         //      String[] fieldNames = new String[fields.length];  
         for (int i = 0; i < names.length; i++)
         {
-            HSSFCell cell = row.createCell(i);
+            Cell cell = row.createCell(i);
             cell.setCellValue(names[i]);
             cell.setCellStyle(style);
         }
@@ -74,13 +76,15 @@ public class ExcelPortServiceImp<T> implements ExportExcelService<T>
             for (short i = 0; i < fields.length; i++)
             {
                 Field field = fields[i];
-                HSSFCell cell = row.createCell(i);
+                Cell cell = row.createCell(i);
                 cell.setCellStyle(style2);
                 String fieldName = field.getName();
                 String getMethodName = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
                 try
                 {
+                    @SuppressWarnings("rawtypes")
                     Class tCls = t.getClass();
+                    @SuppressWarnings("unchecked")
                     Method getMethod = tCls.getMethod(getMethodName, new Class[]
                     {});
                     Object value = getMethod.invoke(t, new Object[]
@@ -133,7 +137,7 @@ public class ExcelPortServiceImp<T> implements ExportExcelService<T>
 
         try
         {
-            File file = new File(path, sheetName);
+            File file = new File(path, filename);
             FileOutputStream fout = new FileOutputStream(file);
             wb.write(fout);
             fout.close();
@@ -141,11 +145,10 @@ public class ExcelPortServiceImp<T> implements ExportExcelService<T>
         {
             e.printStackTrace();
         }
-
     }
 
-    // Excel 上传解析
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings(
+    { "hiding", "unchecked" })
     @Override
     public <T> List<T> extract(InputStream is, String forName)
     {
@@ -153,11 +156,12 @@ public class ExcelPortServiceImp<T> implements ExportExcelService<T>
         try
         {
             // InputStream is = new FileInputStream(file_name);
-            HSSFWorkbook workbook = new HSSFWorkbook(is);
-            HSSFSheet sheet = workbook.getSheetAt(0); //只读取第一个sheet进行处理
+            XSSFWorkbook workbook = new XSSFWorkbook(is);
+            SXSSFWorkbook sxssfWorkbook = new SXSSFWorkbook(workbook, 100);
+            Sheet sheet = sxssfWorkbook.getSheetAt(0); //只读取第一个sheet进行处理
             for (int row_num = 1; row_num < (sheet.getLastRowNum() + 1); row_num++)
             { //处理当前sheet，循环读取每一行
-                HSSFRow xss_row = sheet.getRow(row_num);
+                Row xss_row = sheet.getRow(row_num);
                 Class<?> clazz = Class.forName(forName);
                 Object object = clazz.newInstance();
                 Field[] fields = clazz.getDeclaredFields();
@@ -172,6 +176,10 @@ public class ExcelPortServiceImp<T> implements ExportExcelService<T>
 
                     if (field.getType().getSimpleName().equals("String"))
                     {
+                        if (StringUtils.isBlank(xss_row.getCell(i).getStringCellValue()))
+                        {
+                            continue;
+                        }
                         setMethod.invoke(object, xss_row.getCell(i).getStringCellValue());
                     } else if (field.getType().getSimpleName().equals("Integer"))
                     {
@@ -207,6 +215,6 @@ public class ExcelPortServiceImp<T> implements ExportExcelService<T>
         }
         return ts;
     }
-
 }
+
 ```
