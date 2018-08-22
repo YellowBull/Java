@@ -52,26 +52,20 @@ public class EyTboxController
     @Resource(name = "exportExcelService")
     private ExportExcelService exportExcelService;
 
-    /**
-     * 分页查询 Excel导出EyTbox
-     * 测试请求链接
-     * http://localhost:8080/CarinfoMonitor1/tbox/manager/findEyTboxForPageList.mvc?page=1&rows=1&tboxFactory=-1&flowState=-1
-     */
-    @ResponseBody
+       @ResponseBody
     @SuppressWarnings("unchecked")
-    @RequestMapping("/findEyTboxForPageList.mvc")
-    public String findEyTboxForPageList(Integer page, Integer rows, String tboxNum, String iccidNum, String simNum,
+    @RequestMapping("/findAllEyTboxForPageList.mvc")
+    public String findAllEyTboxForPageList(String tboxNum, String iccidNum, String simNum,
             @RequestParam(defaultValue = "-1") Integer tboxFactory,
-            @RequestParam(defaultValue = "-1") Integer flowState, @RequestParam(defaultValue = "0") String exportExcel,
-            HttpServletRequest request, HttpSession session, HttpServletResponse response)
+            @RequestParam(defaultValue = "-1") Integer flowState, HttpServletRequest request, HttpSession session,
+            HttpServletResponse response)
     {
         logger.info("/findEyTboxForPageList.mvc -------Start");
         JSONObject json = new JSONObject();
-        List<EyTbox> list = null;
+        List<EvTbox> list = null;
         try
         {
-            list = eyTboxService.findEyTboxForPageList((page - 1) * rows, rows, tboxNum, iccidNum, simNum, tboxFactory,
-                    flowState);
+            list = eyTboxService.findAllEyTboxForPageList(tboxNum, iccidNum, simNum, tboxFactory, flowState);
             json.put("total", eyTboxService.findEyTboxForInt(tboxNum, iccidNum, simNum, tboxFactory, flowState));
         } catch (Exception e)
         {
@@ -80,24 +74,20 @@ public class EyTboxController
             logger.error(e + "findEyTboxForPageList 查询出错");
             return json.toString();
         }
-
-        if ("1".equals(exportExcel))// 判断是否导出
+        String path = request.getSession().getServletContext().getRealPath("/export");
+        @SuppressWarnings("rawtypes")
+        Class cl = null;
+        try
         {
-            String path = request.getSession().getServletContext().getRealPath("/export");
-            @SuppressWarnings("rawtypes")
-            Class cl = null;
-            try
-            {
-                cl = Class.forName("com.yutian.spring.entity.EyTbox");
-                String filename = "eytbox.xls";
-                exportExcelService.exportExcel(list, cl, path, filename, FieldName.EYTBOXNAMES);
-                json.put("filename", filename);
-            } catch (Exception e)
-            {
-                logger.error(e + "eytbox.xls 导出异常");
-                json.put("msg", "eytbox.xls 导出异常");
-                return json.toString();
-            }
+            cl = Class.forName("com.yutian.spring.entity.EvTbox");
+            String filename = "evtbox" + (new Date()).getTime() + ".xlsx";// 防止同时导出文件名冲突
+            exportExcelService.exportExcel(list, cl, path, filename, FieldName.EYTBOXNAMES);
+            json.put("filename", filename);
+        } catch (Exception e)
+        {
+            logger.error(e + "evtbox.xls 导出异常");
+            json.put("msg", "evtbox.xls 导出异常");
+            return json.toString();
         }
         json.put("flag", "1");
         json.put("rows", list);
@@ -105,8 +95,6 @@ public class EyTboxController
         logger.info("/findEyTboxForPageList.mvc -------End");
         return json.toString();
     }
-
-}
 
 
 
