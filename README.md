@@ -18,4 +18,8 @@
 <hr/>
 
 [自己搭的框架SpringBoot+Hibernate5+MySQL+Thymeleaf](https://github.com/YellowBull/Java/tree/master/SpringBoot_HIibernate_Thymeleaf_MySQL)<br/>
-[自己搭建的spring boot + spring security 控制访问权限案例](https://github.com/YellowBull/Java/tree/master/SpringBoot_SpringSecurity)
+[自己搭建的spring boot + spring security 控制访问权限案例](https://github.com/YellowBull/Java/tree/master/SpringBoot_SpringSecurity)<hr/>
+
+
+<hr/>
+[IDEA插件 -> Mybatis plugins](https://github.com/YellowBull/Java/blob/master/idea_mybatis_plugins.md)<br/>
