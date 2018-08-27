@@ -1,0 +1,129 @@
+package com.jmev.cn.service.security;
+
+import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Configurable;
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.BeanIds;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.builders.WebSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.web.access.intercept.FilterSecurityInterceptor;
+
+import com.jmev.cn.service.security.handle.LoginFailureHandler;
+import com.jmev.cn.service.security.handle.LoginSuccessHandler;
+import com.jmev.cn.service.security.handle.MyAccessDeniedHandler;
+
+/**
+ * 安全配置
+ * @author 邵欣
+ *
+ */
+@Configurable
+@EnableWebSecurity
+public class WebSecurityConfig extends WebSecurityConfigurerAdapter
+{
+    private static Logger logger = Logger.getLogger(WebSecurityConfig.class);
+    @Autowired
+    private CustomUserDetailsService customUserDetailsService;
+
+    //403页面
+    @Autowired
+    MyAccessDeniedHandler myAccessDeniedHandler;
+    //http://localhost:8080/login 输入正确的用户名密码 并且选中remember-me 则登陆成功，转到 index页面 
+    //再次访问index页面无需登录直接访问
+    //访问http://localhost:8080/home 不拦截，直接访问，
+    //访问http://localhost:8080/hello 需要登录验证后，且具备 “ADMIN”权限hasAuthority("ADMIN")才可以访问
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception
+    {
+        http.addFilterBefore(filterSecurityInterceptor(), FilterSecurityInterceptor.class)//
+                .authorizeRequests()// 授权请求
+                .antMatchers("/login").permitAll()// 访问匹配/login 无需登录认证
+                .anyRequest().authenticated()// 其他任何请求都要认证
+                .and()//
+                .formLogin()//
+                .loginPage("/login")// 指定登录请求页面
+                .failureUrl("/login").permitAll()//
+                //登录失败处理
+                .failureHandler(loginFailureHandler())
+                //登录成功处理
+                .successHandler(loginSuccessHandler()).and()//
+                .logout()//
+                .logoutSuccessUrl("/login")//
+                .permitAll()//
+                .invalidateHttpSession(true)//
+                .and().csrf().disable().exceptionHandling().accessDeniedHandler(myAccessDeniedHandler)//
+                .and()//
+                .rememberMe()//
+                .tokenValiditySeconds(60);//
+    }
+
+    @Autowired
+    private CustomInvocationSecurityMetadataSourceService securityMetadataSource;
+
+    @Autowired
+    private CustomAccessDecisionManager accessDecisionManager;
+
+    @Bean(name = BeanIds.AUTHENTICATION_MANAGER)
+    @Override
+    public AuthenticationManager authenticationManagerBean() throws Exception
+    {
+        return super.authenticationManagerBean();
+    }
+
+    @Bean
+    public FilterSecurityInterceptor filterSecurityInterceptor()
+    {
+        FilterSecurityInterceptor filterSecurityInterceptor = new FilterSecurityInterceptor();
+        filterSecurityInterceptor.setSecurityMetadataSource(securityMetadataSource);
+        filterSecurityInterceptor.setAccessDecisionManager(accessDecisionManager);
+        try
+        {
+            filterSecurityInterceptor.setAuthenticationManager(authenticationManagerBean());
+        } catch (Exception e)
+        {
+            System.err.println(e);
+            logger.error(e + " 过滤器处理异常");
+        }
+        return filterSecurityInterceptor;
+    }
+
+    @Override
+    public void configure(WebSecurity web) throws Exception
+    {
+        super.configure(web);
+    }
+
+    @Autowired
+    public void configureGlobal(AuthenticationManagerBuilder auth) throws Exception
+    {
+        //指定密码加密所使用的加密器为passwordEncoder()
+        //需要将密码加密后写入数据库 
+        auth.userDetailsService(customUserDetailsService).passwordEncoder(passwordEncoder());
+        auth.eraseCredentials(false);
+    }
+
+    @Bean
+    public BCryptPasswordEncoder passwordEncoder()
+    {
+        return new BCryptPasswordEncoder(4);
+    }
+
+    @Bean
+    public LoginSuccessHandler loginSuccessHandler()
+    {
+        return new LoginSuccessHandler();
+    }
+
+    @Bean
+    public LoginFailureHandler loginFailureHandler()
+    {
+        return new LoginFailureHandler();
+    }
+}

@@ -1,0 +1,233 @@
+package com.jmev.cn.controller.basic;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+
+import com.github.pagehelper.PageInfo;
+import com.jmev.cn.constant.CarinfoConstant;
+import com.jmev.cn.entity.basic.EvTbox;
+import com.jmev.cn.service.excel.ExcelPortService;
+import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.servlet.ModelAndView;
+
+import com.jmev.cn.dto.basic.QueryEvTboxDto;
+import com.jmev.cn.service.basic.BasicManagementService;
+import com.jmev.cn.service.unicomAPI.UnicomAPIService;
+
+@Controller
+@RequestMapping("/basic")
+public class BasicManagementController
+{
+    private static Logger logger = Logger.getLogger(BasicManagementController.class);
+    @Autowired
+    private BasicManagementService basicManagementService;
+    @Autowired
+    private UnicomAPIService unicomAPIService;
+    @Autowired
+    private ExcelPortService exportExcelService;
+
+    /**
+     * 终端管理
+     */
+    // 查询
+    @RequestMapping("/queryEvTbox")
+    @ResponseBody
+    public ModelAndView queryEvTbox(ModelAndView model, @RequestBody QueryEvTboxDto queryEvTboxDto)
+    {
+        logger.info("----------queryEvTbox---------Start-------------");
+        try
+        {
+            PageInfo<EvTbox> page = basicManagementService.queryEvTbox(queryEvTboxDto);
+            model.addObject("msg", "查询evtbox 成功");
+            model.addObject("page", page);
+            model.setViewName("/test/page.html");// TODO: pageName
+        } catch (Exception e)
+        {
+            model.addObject("msg", e + " 查询evtbox 异常");
+            logger.error(e + " 查询evtbox 异常");
+            return model;
+        }
+        logger.info("----------queryEvTbox---------End-------------");
+        return model;
+    }
+
+    //批量导出
+    @RequestMapping("/exprotEvTbox")
+    public ModelAndView exprotEvTbox(ModelAndView model, @RequestBody QueryEvTboxDto queryEvTboxDto,
+            HttpServletRequest request)
+    {
+        logger.info("----------exprotEvTbox---------Start-------------");
+        try
+        {
+            List<EvTbox> evTboxs = basicManagementService.exprotEvTbox(queryEvTboxDto);
+            String path = request.getSession().getServletContext().getRealPath("");
+            Class<?> cl = Class.forName("com.jmev.cn.entity.basic.EvTbox");
+            String filename = "evtbox" + (new Date()).getTime() + ".xlsx";// 防止同时导出文件名冲突
+            exportExcelService.exportExcel(evTboxs, cl, path, filename, CarinfoConstant.EVTBOXNAMES);// TODO: 导出具体字段
+            model.addObject("msg", "查询evtbox 成功");
+            model.addObject("filename", filename);
+            model.setViewName("table.html");// TODO: pageName
+        } catch (Exception e)
+        {
+            model.addObject("msg", e + " 查询evtbox 异常");
+            logger.error(e + " 查询evtbox 异常");
+            return model;
+        }
+        logger.info("----------exprotEvTbox---------End-------------");
+        return model;
+    }
+
+    // 新增单条
+    @RequestMapping("/addEvTbox")
+    @ResponseBody
+    public ModelAndView addEvTbox(ModelAndView model, @RequestBody EvTbox evTbox)
+    {
+        logger.info("----------addEvTbox---------Start-------------");
+        try
+        {
+            boolean flag = basicManagementService.checkEvTboxUnique(evTbox);
+            String iccidNum = evTbox.getIccidNum();
+            if (flag)
+            {
+                model.addObject("msg", "校验evtbox唯一性异常");
+                logger.error("校验evtbox唯一性异常");
+                return model;
+            }
+            if (iccidNum != null && iccidNum.length() > 17 && "8986011".equals(iccidNum.substring(0, 7)))
+            {
+
+                Map<String, LinkedList<String>> getTerminalDetails = null;
+                SimpleDateFormat sf = new SimpleDateFormat("yyyy-MM-dd");
+                Date activatedDateFormat;
+                try
+                {
+                    ArrayList<String> iccids = new ArrayList<>();
+                    iccids.add(evTbox.getIccidNum());
+                    getTerminalDetails = unicomAPIService.GetTerminalDetails(iccids);
+                } catch (Exception e)
+                {
+                    logger.error(e + "Unicom API Error");
+                    model.addObject("msg", e + "Unicom API Error");
+                    return model;
+                }
+                List<String> dateActivated = getTerminalDetails.get("dateActivated");
+                List<String> status = getTerminalDetails.get("status");
+                try
+                {
+                    activatedDateFormat = sf.parse(dateActivated.get(0));
+                    evTbox.setActivatedDate(activatedDateFormat);
+                } catch (ParseException e)
+                {
+                    logger.error(e + "日期转换异常");
+                    model.addObject("msg", e + "日期转换异常");
+                    return model;
+                }
+
+                String statu = status.get(0);
+                if ("TEST_READY_NAME".equals(statu))
+                {
+                    evTbox.setFlowState(1);
+                }
+                if ("INVENTORY_NAME".equals(statu))
+                {
+                    evTbox.setFlowState(2);
+                }
+                if ("ACTIVATION_READY_NAME".equals(statu))
+                {
+                    evTbox.setFlowState(5);
+                }
+                if ("ACTIVATED_NAME".equals(statu))
+                {
+                    evTbox.setFlowState(3);
+                }
+                if ("DEACTIVATED_NAME".equals(statu))
+                {
+                    evTbox.setFlowState(4);
+                }
+                if ("RETIRED_NAME".equals(statu))
+                {
+                    evTbox.setFlowState(5);
+                }
+                if ("PURGED_NAME".equals(statu))
+                {
+                    evTbox.setFlowState(5);
+                }
+            }
+            evTbox.setCreatedTime(new Date());
+            evTbox.setVersion(1);
+            evTbox.setLastAccess(new Date());
+            basicManagementService.addEvTbox(evTbox);
+            model.addObject("msg", "新增单条evtbox 成功");
+            model.setViewName("/test/page.html");// TODO: pageName
+        } catch (Exception e)
+        {
+            model.addObject("msg", e + " 新增单条evtbox 异常");
+            logger.error(e + " 新增单条evtbox 异常");
+            return model;
+        }
+        logger.info("----------addEvTbox---------End-------------");
+        return model;
+    }
+
+    // 删除单条
+    @RequestMapping("/deleteEvTbox")
+    @ResponseBody
+    public ModelAndView deleteEvTbox(ModelAndView model, Long id)
+    {
+        logger.info("----------deleteEvTbox---------Start-------------");
+        try
+        {
+            basicManagementService.deleteEvTbox(id);
+            model.addObject("msg", " 删除单条evtbox 成功");
+        } catch (Exception e)
+        {
+            model.addObject("msg", e + "  删除单条evtbox 异常");
+            logger.error(e + "  删除单条evtbox 异常");
+            return model;
+        }
+        logger.info("----------deleteEvTbox---------End-------------");
+        return model;
+    }
+
+    // 修改单条数据
+    @RequestMapping("/updateEvTbox")
+    @ResponseBody
+    public ModelAndView updateEvTbox(ModelAndView model, @RequestBody EvTbox evTbox)
+    {
+        logger.info("----------updateEvTbox---------Start-------------");
+        try
+        {
+            boolean flag = basicManagementService.checkEvTboxUnique(evTbox);
+            if (flag)
+            {
+                model.addObject("msg", "校验evtbox唯一性异常");
+                logger.error("校验evtbox唯一性异常");
+                return model;
+            }
+            evTbox.setLastAccess(new Date());
+            evTbox.setVersion(evTbox.getVersion() + 1);
+            basicManagementService.updateEvTbox(evTbox);
+            model.addObject("msg", " 修改单条evtbox 成功");
+            model.setViewName("/test/page.html");// TODO: pageName
+        } catch (Exception e)
+        {
+            model.addObject("msg", e + "  修改单条evtbox 异常");
+            logger.error(e + "  修改单条evtbox 异常");
+            return model;
+        }
+        logger.info("----------updateEvTbox---------End-------------");
+        return model;
+    }
+}

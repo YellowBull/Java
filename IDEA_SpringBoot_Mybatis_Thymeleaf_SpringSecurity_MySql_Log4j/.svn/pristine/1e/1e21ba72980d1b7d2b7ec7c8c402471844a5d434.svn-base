@@ -1,0 +1,30 @@
+package com.jmev.cn.service.basic;
+
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
+import com.jmev.cn.dao.basic.BasicTboxViewMapper;
+import com.jmev.cn.dto.basic.QueryEvTboxDto;
+import com.jmev.cn.entity.basic.EvTbox;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service("basicTboxViewService")
+public class BasicTboxViewService
+{
+    @Autowired
+    private BasicTboxViewMapper basicTboxViewMapper;
+    // 分页查询
+    PageInfo<EvTbox> queryEvTbox(QueryEvTboxDto dto)
+    {
+        PageHelper.startPage(dto.getPageIndex(), dto.getPageSize());
+        List<EvTbox> evTboxes = basicTboxViewMapper.queryEvTbox(dto);
+        return new PageInfo<>(evTboxes);
+    }
+
+    public List<EvTbox> exprotEvTbox(QueryEvTboxDto dto)
+    {
+        return  basicTboxViewMapper.queryEvTbox(dto);
+    }
+}

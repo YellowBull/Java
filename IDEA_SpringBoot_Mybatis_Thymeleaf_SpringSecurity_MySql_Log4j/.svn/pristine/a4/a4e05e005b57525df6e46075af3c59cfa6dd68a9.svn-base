@@ -1,0 +1,27 @@
+<!DOCTYPE HTML>
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:th="http://www.thymeleaf.org">
+<head>
+<title>Getting Started: Serving Web Content</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<link th:href="@{/css/1.css}" rel="stylesheet" />
+</head>
+<body>
+	<h4 th:text="${page.list}">ID</h4>
+	<table border="1">
+		<tr th:each="user : ${page.list}">
+		</tr>
+	</table>
+	<p th:text="'当前页面索引 ' + ${page.pageNum}" />
+	<p th:text="'所有数据数量 ' + ${page.total}" />
+	<p th:text="'最大页面行数 ' + ${page.pageSize}" />
+	<p th:text="'总页数 ' + ${page.pages}" />
+	<br />
+	<script th:src="@{/static/js/jquery.min.js}"></script>
+	<script>
+		$(function() {
+			alert("page load finish.");
+		});
+	</script>
+</body>
+</html>

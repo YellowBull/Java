@@ -1,0 +1,25 @@
+body{
+    font-size: 13px !important;
+}
+.toolbar{
+    margin-top: 15px;
+    margin-bottom: -30px;
+}
+#searchNumber{
+    width: 60px;
+}
+.box-info .form-horizontal .box-body .form-group{
+    margin-bottom: 0px;
+}
+.form-control{
+    height: 30px;
+}
+table tr:nth-child(odd) {
+    background-color:#FBFBFB;
+}
+table tr:nth-child(even) {
+    background-color:#fff;
+}
+/*table td{*/
+    /*word-break:break-all;*/
+/*}*/

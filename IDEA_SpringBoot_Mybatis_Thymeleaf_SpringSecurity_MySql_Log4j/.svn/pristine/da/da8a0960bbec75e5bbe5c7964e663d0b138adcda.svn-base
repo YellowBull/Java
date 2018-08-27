@@ -1,0 +1,42 @@
+package com.jmev.cn.entity.basic;
+
+import lombok.Getter;
+import lombok.Setter;
+
+import javax.persistence.Entity;
+import javax.persistence.Table;
+import java.util.Date;
+
+@Getter
+@Setter
+//@Entity
+//@Table(name = "ev_tbox")
+public class EvTbox {
+    private Long id;
+
+    private Integer tboxFactory;
+
+    private String tboxNum;
+
+    private String iccidNum;
+
+    private String bluetoothMac;
+
+    private String tboxModel;
+
+    private Date supplyDate;
+
+    private Integer flowState;
+
+    private Date activatedDate;
+
+    private Date chargeDate;
+
+    private String simNum;
+
+    private Date createdTime;
+
+    private Integer version;
+
+    private Date lastAccess;
+}

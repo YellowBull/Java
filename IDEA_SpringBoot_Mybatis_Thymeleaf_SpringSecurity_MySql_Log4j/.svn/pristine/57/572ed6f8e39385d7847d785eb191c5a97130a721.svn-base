@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.jmev.cn.dao.basic.EvTboxMapper">
+    <resultMap id="BaseResultMap" type="com.jmev.cn.entity.basic.EvTbox">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="tbox_factory" property="tboxFactory" jdbcType="TINYINT"/>
+        <result column="tbox_num" property="tboxNum" jdbcType="VARCHAR"/>
+        <result column="iccid_num" property="iccidNum" jdbcType="VARCHAR"/>
+        <result column="bluetooth_mac" property="bluetoothMac" jdbcType="VARCHAR"/>
+        <result column="tbox_model" property="tboxModel" jdbcType="VARCHAR"/>
+        <result column="supply_date" property="supplyDate" jdbcType="DATE"/>
+        <result column="flow_state" property="flowState" jdbcType="TINYINT"/>
+        <result column="activated_date" property="activatedDate" jdbcType="TIMESTAMP"/>
+        <result column="charge_date" property="chargeDate" jdbcType="TIMESTAMP"/>
+        <result column="sim_num" property="simNum" jdbcType="VARCHAR"/>
+        <result column="created_time" property="createdTime" jdbcType="TIMESTAMP"/>
+        <result column="version" property="version" jdbcType="INTEGER"/>
+        <result column="last_access" property="lastAccess" jdbcType="TIMESTAMP"/>
+    </resultMap>
+    <sql id="Base_Column_List">
+        id, tbox_factory, tbox_num, iccid_num, bluetooth_mac, tbox_model, supply_date, flow_state,
+        activated_date, charge_date, sim_num, created_time, version, last_access
+    </sql>
+    <select id="selectByPrimaryKey" resultMap="BaseResultMap" parameterType="java.lang.Long">
+        select
+        <include refid="Base_Column_List"/>
+        from ev_tbox
+        where id = #{id,jdbcType=BIGINT}
+    </select>
+    <select id="queryEvTbox" resultType="com.jmev.cn.entity.basic.EvTbox"
+            parameterType="com.jmev.cn.dto.basic.QueryEvTboxDto">
+        select
+        <include refid="Base_Column_List"/>
+        from ev_tbox where 1=1
+        <if test="iccidNum != null and iccidNum !=''">
+            and iccid_num like CONCAT(CONCAT('%',
+            #{iccidNum}),'%')
+        </if>
+        <if test="'1'== supplier and supplier !=''">
+            and iccid_num like '%8986011%'
+        </if>
+        <if test="'0'== supplier and supplier !=''">
+            and iccid_num like '%8986061%'
+        </if>
+        <if test="tboxModel != null and tboxModel !=''">
+            and tbox_model like CONCAT(CONCAT('%',
+            #{tboxModel}),'%')
+        </if>
+        <if test="tboxNum != null and tboxNum !=''">
+            and tbox_num like CONCAT(CONCAT('%',
+            #{tboxNum}),'%')
+        </if>
+        <if test="flowState !=  -1">
+            and flow_state = #{flowState}
+        </if>
+        <if test="tboxFactory !=  -1">
+            and tbox_factory = #{tboxFactory}
+        </if>
+    </select>
+    <select id="findByTboxNumOrIccidNum" resultType="java.math.BigInteger">
+        select count(1)
+        from ev_tbox
+        where tbox_num = #{tboxNum} or iccid_num = #{iccidNum}
+    </select>
+    <delete id="deleteByPrimaryKey" parameterType="java.lang.Long">
+        delete from ev_tbox
+        where id = #{id,jdbcType=BIGINT}
+    </delete>
+    <insert id="insert" parameterType="com.jmev.cn.entity.basic.EvTbox">
+        insert into ev_tbox (id, tbox_factory, tbox_num,
+                             iccid_num, bluetooth_mac, tbox_model,
+                             supply_date, flow_state, activated_date,
+                             charge_date, sim_num, created_time,
+                             version, last_access)
+        values (#{id,jdbcType=BIGINT}, #{tboxFactory,jdbcType=TINYINT}, #{tboxNum,jdbcType=VARCHAR},
+                                       #{iccidNum,jdbcType=VARCHAR}, #{bluetoothMac,jdbcType=VARCHAR},
+                                       #{tboxModel,jdbcType=VARCHAR},
+                                       #{supplyDate,jdbcType=DATE}, #{flowState,jdbcType=TINYINT},
+                                       #{activatedDate,jdbcType=TIMESTAMP},
+                                       #{chargeDate,jdbcType=TIMESTAMP}, #{simNum,jdbcType=VARCHAR},
+                #{createdTime,jdbcType=TIMESTAMP},
+                #{version,jdbcType=INTEGER}, #{lastAccess,jdbcType=TIMESTAMP})
+    </insert>
+    <insert id="insertSelective" parameterType="com.jmev.cn.entity.basic.EvTbox">
+        insert into ev_tbox
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">
+                id,
+            </if>
+            <if test="tboxFactory != null">
+                tbox_factory,
+            </if>
+            <if test="tboxNum != null">
+                tbox_num,
+            </if>
+            <if test="iccidNum != null">
+                iccid_num,
+            </if>
+            <if test="bluetoothMac != null">
+                bluetooth_mac,
+            </if>
+            <if test="tboxModel != null">
+                tbox_model,
+            </if>
+            <if test="supplyDate != null">
+                supply_date,
+            </if>
+            <if test="flowState != null">
+                flow_state,
+            </if>
+            <if test="activatedDate != null">
+                activated_date,
+            </if>
+            <if test="chargeDate != null">
+                charge_date,
+            </if>
+            <if test="simNum != null">
+                sim_num,
+            </if>
+            <if test="createdTime != null">
+                created_time,
+            </if>
+            <if test="version != null">
+                version,
+            </if>
+            <if test="lastAccess != null">
+                last_access,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="id != null">
+                #{id,jdbcType=BIGINT},
+            </if>
+            <if test="tboxFactory != null">
+                #{tboxFactory,jdbcType=TINYINT},
+            </if>
+            <if test="tboxNum != null">
+                #{tboxNum,jdbcType=VARCHAR},
+            </if>
+            <if test="iccidNum != null">
+                #{iccidNum,jdbcType=VARCHAR},
+            </if>
+            <if test="bluetoothMac != null">
+                #{bluetoothMac,jdbcType=VARCHAR},
+            </if>
+            <if test="tboxModel != null">
+                #{tboxModel,jdbcType=VARCHAR},
+            </if>
+            <if test="supplyDate != null">
+                #{supplyDate,jdbcType=DATE},
+            </if>
+            <if test="flowState != null">
+                #{flowState,jdbcType=TINYINT},
+            </if>
+            <if test="activatedDate != null">
+                #{activatedDate,jdbcType=TIMESTAMP},
+            </if>
+            <if test="chargeDate != null">
+                #{chargeDate,jdbcType=TIMESTAMP},
+            </if>
+            <if test="simNum != null">
+                #{simNum,jdbcType=VARCHAR},
+            </if>
+            <if test="createdTime != null">
+                #{createdTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="version != null">
+                #{version,jdbcType=INTEGER},
+            </if>
+            <if test="lastAccess != null">
+                #{lastAccess,jdbcType=TIMESTAMP},
+            </if>
+        </trim>
+    </insert>
+    <insert id="addEvTboxsByExcel" parameterType="java.util.List">
+        insert into ev_tbox
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">
+                id,
+            </if>
+            <if test="tboxFactory != null">
+                tbox_factory,
+            </if>
+            <if test="tboxNum != null">
+                tbox_num,
+            </if>
+            <if test="iccidNum != null">
+                iccid_num,
+            </if>
+            <if test="bluetoothMac != null">
+                bluetooth_mac,
+            </if>
+            <if test="tboxModel != null">
+                tbox_model,
+            </if>
+            <if test="supplyDate != null">
+                supply_date,
+            </if>
+            <if test="flowState != null">
+                flow_state,
+            </if>
+            <if test="activatedDate != null">
+                activated_date,
+            </if>
+            <if test="chargeDate != null">
+                charge_date,
+            </if>
+            <if test="simNum != null">
+                sim_num,
+            </if>
+            <if test="createdTime != null">
+                created_time,
+            </if>
+            <if test="version != null">
+                version,
+            </if>
+            <if test="lastAccess != null">
+                last_access,
+            </if>
+        </trim>
+        <foreach collection="list" item="item">
+            <trim prefix="values (" suffix=")" suffixOverrides=",">
+                <if test="id != null">
+                    #{id,jdbcType=BIGINT},
+                </if>
+                <if test="tboxFactory != null">
+                    #{tboxFactory,jdbcType=TINYINT},
+                </if>
+                <if test="tboxNum != null">
+                    #{tboxNum,jdbcType=VARCHAR},
+                </if>
+                <if test="iccidNum != null">
+                    #{iccidNum,jdbcType=VARCHAR},
+                </if>
+                <if test="bluetoothMac != null">
+                    #{bluetoothMac,jdbcType=VARCHAR},
+                </if>
+                <if test="tboxModel != null">
+                    #{tboxModel,jdbcType=VARCHAR},
+                </if>
+                <if test="supplyDate != null">
+                    #{supplyDate,jdbcType=DATE},
+                </if>
+                <if test="flowState != null">
+                    #{flowState,jdbcType=TINYINT},
+                </if>
+                <if test="activatedDate != null">
+                    #{activatedDate,jdbcType=TIMESTAMP},
+                </if>
+                <if test="chargeDate != null">
+                    #{chargeDate,jdbcType=TIMESTAMP},
+                </if>
+                <if test="simNum != null">
+                    #{simNum,jdbcType=VARCHAR},
+                </if>
+                <if test="createdTime != null">
+                    #{createdTime,jdbcType=TIMESTAMP},
+                </if>
+                <if test="version != null">
+                    #{version,jdbcType=INTEGER},
+                </if>
+                <if test="lastAccess != null">
+                    #{lastAccess,jdbcType=TIMESTAMP},
+                </if>
+            </trim>
+        </foreach>
+    </insert>
+    <update id="updateByPrimaryKeySelective" parameterType="com.jmev.cn.entity.basic.EvTbox">
+        update ev_tbox
+        <set>
+            <if test="tboxFactory != null">
+                tbox_factory = #{tboxFactory,jdbcType=TINYINT},
+            </if>
+            <if test="tboxNum != null">
+                tbox_num = #{tboxNum,jdbcType=VARCHAR},
+            </if>
+            <if test="iccidNum != null">
+                iccid_num = #{iccidNum,jdbcType=VARCHAR},
+            </if>
+            <if test="bluetoothMac != null">
+                bluetooth_mac = #{bluetoothMac,jdbcType=VARCHAR},
+            </if>
+            <if test="tboxModel != null">
+                tbox_model = #{tboxModel,jdbcType=VARCHAR},
+            </if>
+            <if test="supplyDate != null">
+                supply_date = #{supplyDate,jdbcType=DATE},
+            </if>
+            <if test="flowState != null">
+                flow_state = #{flowState,jdbcType=TINYINT},
+            </if>
+            <if test="activatedDate != null">
+                activated_date = #{activatedDate,jdbcType=TIMESTAMP},
+            </if>
+            <if test="chargeDate != null">
+                charge_date = #{chargeDate,jdbcType=TIMESTAMP},
+            </if>
+            <if test="simNum != null">
+                sim_num = #{simNum,jdbcType=VARCHAR},
+            </if>
+            <if test="createdTime != null">
+                created_time = #{createdTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="version != null">
+                version = #{version,jdbcType=INTEGER},
+            </if>
+            <if test="lastAccess != null">
+                last_access = #{lastAccess,jdbcType=TIMESTAMP},
+            </if>
+        </set>
+        where id = #{id,jdbcType=BIGINT}
+    </update>
+    <update id="updateByPrimaryKey" parameterType="com.jmev.cn.entity.basic.EvTbox">
+        update ev_tbox
+        set tbox_factory   = #{tboxFactory,jdbcType=TINYINT},
+            tbox_num       = #{tboxNum,jdbcType=VARCHAR},
+            iccid_num      = #{iccidNum,jdbcType=VARCHAR},
+            bluetooth_mac  = #{bluetoothMac,jdbcType=VARCHAR},
+            tbox_model     = #{tboxModel,jdbcType=VARCHAR},
+            supply_date    = #{supplyDate,jdbcType=DATE},
+            flow_state     = #{flowState,jdbcType=TINYINT},
+            activated_date = #{activatedDate,jdbcType=TIMESTAMP},
+            charge_date    = #{chargeDate,jdbcType=TIMESTAMP},
+            sim_num        = #{simNum,jdbcType=VARCHAR},
+            created_time   = #{createdTime,jdbcType=TIMESTAMP},
+            version        = #{version,jdbcType=INTEGER},
+            last_access    = #{lastAccess,jdbcType=TIMESTAMP}
+        where id = #{id,jdbcType=BIGINT}
+    </update>
+</mapper>

@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="
+            http://www.springframework.org/schema/beans 
+            http://www.springframework.org/schema/beans/spring-beans-3.0.xsd 
+            http://www.springframework.org/schema/tx 
+            http://www.springframework.org/schema/tx/spring-tx-3.0.xsd
+            http://www.springframework.org/schema/context  
+      		http://www.springframework.org/schema/context/spring-context-3.0.xsd
+            http://www.springframework.org/schema/aop 
+            http://www.springframework.org/schema/aop/spring-aop-3.0.xsd">
+
+	<context:annotation-config />
+
+	<aop:aspectj-autoproxy proxy-target-class="true" />
+
+	<bean id="propertyConfigurer"
+		class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="locations">
+			<list>
+				<value>classpath:config/datasource/*.properties</value>
+				<value>classpath:config/core/*.properties</value>
+			</list>
+		</property>
+	</bean>
+
+	<bean id="dataSource"
+		class="com.alibaba.druid.pool.DruidDataSource" init-method="init"
+		destroy-method="close">
+		<!-- 基本属性 url、user、password -->
+		<property name="url" value="${jdbc.jdbcUrl}" />
+		<property name="username" value="${jdbc.user}" />
+		<property name="password" value="${jdbc.password}" />
+		<!-- 配置初始化大小、最小、最大 -->
+		<property name="initialSize" value="${jdbc.initialSize}" />
+		<property name="minIdle" value="${jdbc.minIdle}" />
+		<property name="maxActive" value="${jdbc.maxActive}" />
+		<!-- 配置获取连接等待超时的时间 -->
+		<property name="maxWait" value="${jdbc.maxWait}" />
+		<!-- 配置间隔多久才进行一次检测，检测需要关闭的空闲连接，单位是毫秒 -->
+		<property name="timeBetweenEvictionRunsMillis"
+			value="${jdbc.timeBetweenEvictionRunsMillis}" />
+		<!-- 配置一个连接在池中最小生存的时间，单位是毫秒 -->
+		<property name="minEvictableIdleTimeMillis"
+			value="${jdbc.minEvictableIdleTimeMillis}" />
+		<property name="validationQuery"
+			value="${jdbc.validationQuery}" />
+		<property name="testWhileIdle" value="${jdbc.testWhileIdle}" />
+		<property name="testOnBorrow" value="${jdbc.testOnBorrow}" />
+		<property name="testOnReturn" value="${jdbc.testOnReturn}" />
+
+		<!-- 打开PSCache，并且指定每个连接上PSCache的大小 -->
+		<property name="poolPreparedStatements"
+			value="${jdbc.poolPreparedStatements}" />
+		<property name="maxPoolPreparedStatementPerConnectionSize"
+			value="${jdbc.maxPoolPreparedStatementPerConnectionSize}" />
+
+		<!-- sql打印处理 -->
+		<property name="proxyFilters">
+			<ref bean="log-filter" />
+		</property>
+	</bean>
+
+	<!-- druid 日志处理 -->
+	<bean id="log-filter"
+		class="com.alibaba.druid.filter.logging.Log4jFilter">
+		<property name="resultSetLogEnabled" value="false" />
+		<property name="statementExecutableSqlLogEnable"
+			value="${jdbc.statementExecutableSqlLogEnable}" />
+	</bean>
+
+	<!-- 自动扫描 -->
+	<context:component-scan
+		base-package="com.jmev.cn.dao" />
+	<context:component-scan
+		base-package="com.jmev.cn.entity" />
+
+	<!-- 配置Hibernate的SessionFactory实例：通过Spring提供的LocalSessionFactoryBean进行配置 -->
+	<bean id="sessionFactory"
+		class="org.springframework.orm.hibernate5.LocalSessionFactoryBean">
+
+		<property name="dataSource" ref="dataSource" />
+
+		<!-- hibernate的相关属性配置 -->
+		<property name="hibernateProperties">
+			<props>
+				<!-- 设置数据库方言 -->
+				<prop key="hibernate.dialect">${hibernate.dialect}</prop>
+				<!-- 是否查找validation包 -->
+				<prop key="javax.persistence.validation.mode">none</prop>
+				<!-- 是否在控制台显示sql -->
+				<prop key="hibernate.show_sql">${hibernate.showsql}</prop>
+				<!-- 是否格式化sql，优化显示 -->
+				<prop key="hibernate.format_sql">${hibernate.formatsql}</prop>
+				<!-- 是否开启二级缓存 -->
+				<prop key="hibernate.cache.use_second_level_cache">${hibernate.use_second_level_cache}</prop>
+				<!-- 是否开启查询缓存 -->
+				<prop key="hibernate.cache.use_query_cache">${hibernate.use_query_cache}</prop>
+				<!-- 数据库批量查询最大数 -->
+				<prop key="hibernate.jdbc.fetch_size">${hibernate.fetch_size}</prop>
+				<!-- 数据库批量更新、添加、删除操作最大数 -->
+				<prop key="hibernate.jdbc.batch_size">${hibernate.batch_size}</prop>
+				<!-- 设置自动创建|更新|验证数据库表结构 -->
+				<prop key="hibernate.hbm2ddl.auto">${hibernate.hbm2ddl_auto}</prop>
+			</props>
+		</property>
+
+		<property name="packagesToScan" value="com.jmev.cn.entity" />
+	</bean>
+
+	<!-- 配置Spring的声明式事务 -->
+	<bean id="hibernateTransactionManager"
+		class="org.springframework.orm.hibernate5.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+
+	<tx:annotation-driven
+		transaction-manager="hibernateTransactionManager" />
+
+	<bean id="baseHibernateDao"
+		class="com.jmev.cn.dao.crud.dao.impl.BaseHibernateDao">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+</beans>

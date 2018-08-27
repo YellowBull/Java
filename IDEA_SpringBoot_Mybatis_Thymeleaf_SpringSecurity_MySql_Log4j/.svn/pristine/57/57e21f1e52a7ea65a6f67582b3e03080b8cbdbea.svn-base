@@ -1,0 +1,27 @@
+server.port=9090
+spring.application.name=CarinfoMonitor
+#server.context-path=/
+
+spring.profiles.active=test
+
+spring.devtools.restart.enabled: true
+spring.mvc.static-path-pattern=/static/**
+
+spring.datasource.type=com.alibaba.druid.pool.DruidDataSource
+spring.datasource.driver-class-name=com.mysql.jdbc.Driver
+spring.datasource.url=jdbc:mysql://10.250.3.116:3306/carinfomonitor?useUnicode=true&characterEncoding=gbk&zeroDateTimeBehavior=convertToNull&useSSL=false
+spring.datasource.username=root
+spring.datasource.password=123
+
+spring.datasource.initialSize=5
+spring.datasource.minIdle=5
+spring.datasource.maxActive=20
+spring.datasource.maxWait=60000
+spring.datasource.timeBetweenEvictionRunsMillis=60000
+spring.datasource.minEvictableIdleTimeMillis=300000
+spring.datasource.validationQuery=SELECT 1 FROM DUAL
+spring.datasource.testWhileIdle=true
+spring.datasource.testOnBorrow=false
+spring.datasource.testOnReturn=false
+spring.datasource.filters=stat,wall,log4j
+spring.datasource.logSlowSql=true

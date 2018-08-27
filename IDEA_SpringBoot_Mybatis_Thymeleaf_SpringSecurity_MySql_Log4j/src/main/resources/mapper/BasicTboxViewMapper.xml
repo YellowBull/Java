@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.jmev.cn.dao.basic.BasicTboxViewMapper">
+    <resultMap id="BaseResultMap" type="com.jmev.cn.entity.basic.BasicTboxView">
+        <result column="vin_num" property="vinNum" jdbcType="VARCHAR"/>
+        <result column="id" property="id" jdbcType="BIGINT"/>
+        <result column="tbox_factory" property="tboxFactory" jdbcType="TINYINT"/>
+        <result column="tbox_num" property="tboxNum" jdbcType="VARCHAR"/>
+        <result column="iccid_num" property="iccidNum" jdbcType="VARCHAR"/>
+        <result column="bluetooth_mac" property="bluetoothMac" jdbcType="VARCHAR"/>
+        <result column="tbox_model" property="tboxModel" jdbcType="VARCHAR"/>
+        <result column="supply_date" property="supplyDate" jdbcType="DATE"/>
+        <result column="flow_state" property="flowState" jdbcType="TINYINT"/>
+        <result column="activated_date" property="activatedDate" jdbcType="TIMESTAMP"/>
+        <result column="charge_date" property="chargeDate" jdbcType="TIMESTAMP"/>
+        <result column="sim_num" property="simNum" jdbcType="VARCHAR"/>
+        <result column="created_time" property="createdTime" jdbcType="TIMESTAMP"/>
+        <result column="version" property="version" jdbcType="INTEGER"/>
+        <result column="last_access" property="lastAccess" jdbcType="TIMESTAMP"/>
+    </resultMap>
+    <sql id="Base_Column_List">
+        id, tbox_factory, tbox_num, iccid_num, bluetooth_mac, tbox_model, supply_date, flow_state,
+        activated_date, charge_date, sim_num, created_time, version, last_access
+    </sql>
+    <select id="queryEvTbox" resultType="com.jmev.cn.entity.basic.EvTbox"
+            parameterType="com.jmev.cn.dto.basic.QueryEvTboxDto">
+        select
+        <include refid="Base_Column_List"/>
+        from basic_tbox_view where 1=1
+        <if test="iccidNum != null and iccidNum !=''">
+            and iccid_num like CONCAT(CONCAT('%',
+            #{iccidNum}),'%')
+        </if>
+        <if test="'1'== supplier and supplier !=''">
+            and iccid_num like '%8986011%'
+        </if>
+        <if test="'0'== supplier and supplier !=''">
+            and iccid_num like '%8986061%'
+        </if>
+        <if test="tboxModel != null and tboxModel !=''">
+            and tbox_model like CONCAT(CONCAT('%',
+            #{tboxModel}),'%')
+        </if>
+        <if test="tboxNum != null and tboxNum !=''">
+            and tbox_num like CONCAT(CONCAT('%',
+            #{tboxNum}),'%')
+        </if>
+        <if test="flowState !=  -1">
+            and flow_state = #{flowState}
+        </if>
+        <if test="tboxFactory !=  -1">
+            and tbox_factory = #{tboxFactory}
+        </if>
+    </select>
+</mapper>
